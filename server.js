@@ -9,11 +9,13 @@ var server = express.createServer();
 server.configure(function(){
     server.set('views', __dirname + '/views');
     server.set('view options', { layout: false });
+    server.set("view engine", 'ejs');
     server.use(connect.bodyParser());
     server.use(express.cookieParser());
     server.use(express.session({ secret: "shhhhhhhhh!"}));
     server.use(connect.static(__dirname + '/static'));
     server.use(server.router);
+    //server.engine('html', require('ejs').renderFile);
 });
 
 //setup the errors
@@ -58,14 +60,24 @@ io.sockets.on('connection', function(socket){
 /////// ADD ALL YOUR ROUTES HERE  /////////
 
 server.get('/', function(req,res){
-  res.render('index.jade', {
-    locals : { 
+  res.redirect('/index.html');
+  /*res.render('index.ejs', {
+    locals : {
               title : 'Your Page Title'
              ,description: 'Your Page Description'
              ,author: 'Your Name'
-             ,analyticssiteid: 'XXXXXXX' 
+             ,analyticssiteid: 'XXXXXXX'
             }
-  });
+  });*/
+});
+
+server.get('/articles', function(req, res){
+    res.json([
+        { id: 1, name: 'Menü 1'},
+        { id: 2, name: 'Menü 2'},
+        { id: 3, name: 'Menü 3'},
+        { id: 4, name: 'Menü 4'}
+    ])
 });
 
 

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en" ng-app>
+<head>
+    <meta charset="utf-8">
+    <title>Bistro - Kasse</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="">
+    <meta name="author" content="">
+
+    <!-- Le styles -->
+    <link rel="stylesheet" href="/css/bootstrap.css">
+    <link rel="stylesheet" href="/css/bootstrap-responsive.css">
+    <link rel="stylesheet" href="/css/style.css">
+
+</head>
+
+<body>
+
+<div class="navbar navbar-inverse navbar-fixed-top">
+    <div class="navbar-inner">
+        <div class="container">
+            <a class="brand" href=".">Bistro Kasse</a>
+            <div class="nav-collapse collapse">
+                <ul class="nav">
+                    <li class="active"><a href=".">Kasse</a></li>
+                    <li><a href="article.html">Artikel</a></li>
+                </ul>
+            </div><!--/.nav-collapse -->
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid" ng-controller="CashboxController">
+    <div class="row-fluid">
+        <div class="span3">
+            <div class="well">
+                <ul>
+                    <li ng-repeat="article in articles | filter: isOrdered" ng-click="remove(article)"><span class="badge">{{article.ordered}}</span> {{article.name}}</li>
+                </ul>
+                <a class="btn" ng-repeat="(currency, amount) in total track by $id(currency)">{{amount}} {{currency.toUpperCase()}}</a>
+            </div><!--/.well -->
+        </div><!--/span-->
+
+        <div class="span9">
+            <a class="btn btn-large" ng-class="{disabled: isDisabled(article)}" ng-repeat="article in articles" ng-click="isDisabled(article) || add(article)">{{article.name}}<span class="badge" ng-show="article.available > -1">{{article.available}}</span></a>
+        </div>
+    </div>
+</div> <!-- /container -->
+
+<!-- Le javascript
+================================================== -->
+<!-- Placed at the end of the document so the pages load faster -->
+<script src="/js/lib/jquery-2.0.3.min.js"></script>
+<script src="/js/lib/bootstrap-2.3.2.min.js"></script>
+<script src="/js/lib/angular-1.1.5.min.js"></script>
+<script src="/js/cashbox.js"></script>
+
+
+</body>
+</html>
