@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" ng-app>
+<html lang="en" ng-app="bistro">
 <head>
     <meta charset="utf-8">
     <title>Bistro - Kasse</title>
@@ -21,30 +21,15 @@
         <div class="container">
             <a class="brand" href=".">Bistro Kasse</a>
             <div class="nav-collapse collapse">
-                <ul class="nav">
-                    <li class="active"><a href=".">Kasse</a></li>
-                    <li><a href="article.html">Artikel</a></li>
+                <ul class="nav" ng-controller="NavController">
+                    <li ng-class="{active: isActive(menuItem)}" ng-repeat="menuItem in menuItems"><a href="/#{{menuItem.url}}">{{menuItem.name}}</a></li>
                 </ul>
             </div><!--/.nav-collapse -->
         </div>
     </div>
 </div>
 
-<div class="container-fluid" ng-controller="CashboxController">
-    <div class="row-fluid">
-        <div class="span3">
-            <div class="well">
-                <ul>
-                    <li ng-repeat="article in articles | filter: isOrdered" ng-click="remove(article)"><span class="badge">{{article.ordered}}</span> {{article.name}}</li>
-                </ul>
-                <a class="btn" ng-repeat="(currency, amount) in total track by $id(currency)">{{amount}} {{currency.toUpperCase()}}</a>
-            </div><!--/.well -->
-        </div><!--/span-->
-
-        <div class="span9">
-            <a class="btn btn-large" ng-class="{disabled: !isAvailable(article)}" ng-repeat="article in articles" ng-click="add(article)">{{article.name}}<span class="badge" ng-show="article.available > -1">{{article.available}}</span></a>
-        </div>
-    </div>
+<div class="container-fluid" ng-view>
 </div> <!-- /container -->
 
 <!-- Le javascript
@@ -53,7 +38,9 @@
 <script src="/js/lib/jquery-2.0.3.min.js"></script>
 <script src="/js/lib/bootstrap-2.3.2.min.js"></script>
 <script src="/js/lib/angular-1.1.5.min.js"></script>
+<script src="/js/bistro.js"></script>
 <script src="/js/cashbox.js"></script>
+<script src="/js/articles.js"></script>
 
 
 </body>

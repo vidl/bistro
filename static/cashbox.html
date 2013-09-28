@@ -1,0 +1,14 @@
+<div class="row-fluid">
+    <div class="span3">
+        <div class="well">
+            <ul>
+                <li ng-repeat="article in articles | filter: isOrdered" ng-click="remove(article)"><span class="badge">{{article.ordered}}</span> {{article.name}}</li>
+            </ul>
+            <a class="btn" ng-repeat="(currency, amount) in total track by $id(currency)">{{amount}} {{currency.toUpperCase()}}</a>
+        </div><!--/.well -->
+    </div><!--/span-->
+
+    <div class="span9">
+        <a class="btn btn-large" ng-class="{disabled: !isAvailable(article)}" ng-repeat="article in articles" ng-click="add(article)">{{article.name}}<span class="badge" ng-show="article.available > -1">{{article.available}}</span></a>
+    </div>
+</div>
