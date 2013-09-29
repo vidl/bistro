@@ -20,7 +20,11 @@ function CashboxController($scope) {
         { id: 1, name: 'Menü 1', price: { chf: 510, eur: 340}, available: 2, ordered: 0},
         { id: 2, name: 'Menü 2', price: { chf: 780, eur: 530}, available: -1, ordered: 0},
         { id: 3, name: 'Menü 3', price: { chf: 1230, eur: 890}, available: -1, ordered: 0},
-        { id: 4, name: 'Menü 4', price: { chf: 940, eur: 780}, available: -1, ordered: 0}
+        { id: 4, name: 'Menü 4', price: { chf: 940, eur: 780}, available: -1, ordered: 0},
+        { id: 1, name: 'Menü 5', price: { chf: 510, eur: 340}, available: 2, ordered: 0},
+        { id: 2, name: 'Menü 6', price: { chf: 780, eur: 530}, available: -1, ordered: 0},
+        { id: 3, name: 'Menü 7', price: { chf: 1230, eur: 890}, available: -1, ordered: 0},
+        { id: 4, name: 'Menü 8', price: { chf: 940, eur: 780}, available: -1, ordered: 0}
     ];
     $scope.total = { chf: 0, eur: 0};
 
@@ -44,8 +48,11 @@ function CashboxController($scope) {
         return article.ordered > 0;
     };
 
-
     $scope.isAvailable = function(article) {
         return article.available != 0;
+    };
+
+    $scope.formatAmount = function(amount) {
+      return (amount / 100).toFixed(2);
     };
 }

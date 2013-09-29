@@ -1,14 +1,29 @@
-<div class="row-fluid">
+<div class="row-fluid cashbox">
     <div class="span3">
         <div class="well">
-            <ul>
-                <li ng-repeat="article in articles | filter: isOrdered" ng-click="remove(article)"><span class="badge">{{article.ordered}}</span> {{article.name}}</li>
-            </ul>
-            <a class="btn" ng-repeat="(currency, amount) in total track by $id(currency)">{{amount}} {{currency.toUpperCase()}}</a>
+            <table class="table table-striped table-condensed table-large">
+                <tr ng-repeat="article in articles | filter: isOrdered" class="show-on-hover-hook">
+                    <td class="text-right">{{article.ordered}}x</td>
+                    <td ng-click="remove(article)" class="text-left">{{article.name}}<i class="icon-minus-sign pull-right show-on-hover"></i></td>
+                </tr>
+            </table>
+            <div class="clearfix">
+                <div ng-repeat="(currency, amount) in total track by $id(currency)"  ng-class-odd="'pull-left'" ng-class-even="'pull-right'">
+                    <a class="btn" ng-class="{disabled: amount == 0, 'btn-primary': amount > 0}" ng-click="order(currency)">{{formatAmount(amount)}} {{currency.toUpperCase()}}</a>
+                </div>
+            </div>
+            <div>&nbsp;</div>
+            <textarea placeholder="Hinweise für die Küche" rows="5" ng-model="kitchenNotes"></textarea>
         </div><!--/.well -->
     </div><!--/span-->
 
     <div class="span9">
-        <a class="btn btn-large" ng-class="{disabled: !isAvailable(article)}" ng-repeat="article in articles" ng-click="add(article)">{{article.name}}<span class="badge" ng-show="article.available > -1">{{article.available}}</span></a>
+        <a class="btn btn-large article" ng-class="{disabled: !isAvailable(article)}" ng-repeat="article in articles" ng-click="add(article)">
+            <div class="top left right" ng-show="article.available > -1">Verf: <span class="available badge">{{article.available}}</span></div>
+            <div class="bottom muted" ng-repeat="(currency, amount) in article.price track by $id(currency)"  ng-class-odd="'left'" ng-class-even="'right'">
+                {{formatAmount(amount)}} {{currency.toUpperCase()}}
+            </div>
+            {{article.name}}
+        </a>
     </div>
 </div>
