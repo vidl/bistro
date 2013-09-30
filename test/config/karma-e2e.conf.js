@@ -1,9 +1,9 @@
 module.exports = function (config) {
   config.set({
-    basePath: '../',
+    basePath: '../../',
 
     files: [
-      'test/e2e/**/*.js'
+      'static/e2e/*.js'
     ],
 
     frameworks: ['ng-scenario'],
@@ -15,7 +15,7 @@ module.exports = function (config) {
     singleRun: true,
 
     proxies: {
-      '/': 'http://localhost:8000/'
+      '/': 'http://localhost:8081/'
     },
 
     junitReporter: {
