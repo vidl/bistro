@@ -28,8 +28,14 @@ function CashboxController($scope) {
     ];
     $scope.total = { chf: 0, eur: 0};
 
+    var resetGiven = function() {
+        $scope.lastOrderAmount = undefined;
+        $scope.given = '';
+    };
+
     $scope.add = function(article) {
         if ($scope.isAvailable(article)) {
+            resetGiven();
             article.ordered++;
             article.available--;
             $scope.total.chf += article.price.chf;
@@ -38,10 +44,28 @@ function CashboxController($scope) {
     };
 
     $scope.remove = function(article) {
+        resetGiven();
         article.ordered--;
         article.available++;
         $scope.total.chf -= article.price.chf;
         $scope.total.eur -= article.price.eur;
+    };
+
+
+    var clearOrder = function() {
+      angular.forEach($scope.articles, function(article){
+        article.ordered = 0;
+      });
+      $scope.total.chf = 0;
+      $scope.total.eur = 0;
+
+    };
+
+    $scope.order = function(currency) {
+        // todo: send order to server
+        $scope.lastOrderAmount = $scope.total[currency];
+        $scope.lastOrderCurrency = currency;
+        clearOrder();
     };
 
     $scope.isOrdered = function(article) {
@@ -52,7 +76,4 @@ function CashboxController($scope) {
         return article.available != 0;
     };
 
-    $scope.formatAmount = function(amount) {
-      return (amount / 100).toFixed(2);
-    };
 }
