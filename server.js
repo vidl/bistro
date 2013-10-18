@@ -2,7 +2,10 @@
 var connect = require('connect')
     , express = require('express')
     , io = require('socket.io')
-    , port = (process.env.PORT || 8081);
+    , port = (process.env.PORT || 8081)
+    , MongoClient = require('mongodb').MongoClient
+    , ObjectID = require('mongodb').ObjectID;
+
 
 //Setup Express
 var server = express.createServer();
@@ -52,6 +55,22 @@ io.sockets.on('connection', function(socket){
   });
 });
 
+var withDb = function(callback) {
+    MongoClient.connect('mongodb://127.0.0.1:27017/bistro', function(err, db) {
+        if(err) throw err;
+        callback(db);
+    });
+};
+
+var withArticles = function(callback) {
+  withDb(function(db){
+     callback(db.collection('articles'));
+  });
+};
+
+var getIdQuery = function(id) {
+    return {_id: ObjectID.createFromHexString(id)}
+};
 
 ///////////////////////////////////////////
 //              Routes                   //
@@ -72,14 +91,61 @@ server.get('/', function(req,res){
 });
 
 server.get('/articles', function(req, res){
-    res.json([
-        { id: 1, name: 'Menü 1'},
-        { id: 2, name: 'Menü 2'},
-        { id: 3, name: 'Menü 3'},
-        { id: 4, name: 'Menü 4'}
-    ])
+    withArticles(function(articles){
+        articles.find({}, {sort: {name: 1}}).toArray(function(err, docs){
+            if (err)throw err;
+            res.json(docs);
+        });
+    });
 });
 
+server.delete('/articles/:id', function(req, res){
+    console.log(req.params.id);
+    withArticles(function(articles){
+        articles.remove(getIdQuery(req.params.id), {w: 1}, function(err){
+            if (err) {
+                res.status(500).json(err);
+            } else {
+                res.send(200);
+            }
+        });
+    });
+});
+
+server.post('/articles', function(req, res){
+
+    withArticles(function(articles){
+
+        var id = articles.save(req.body, {w: 1}, function(err, result){
+           if (err){
+               res.status(500).json(err);
+           }  else {
+               res.send(200, id);
+           }
+        });
+    });
+
+});
+
+server.get('/articles/fixture', function(req, res){
+
+    withArticles(function(articles){
+       articles.insert([
+           { name: 'Menü 1', price: { chf: 510, eur: 340},  available:  2 },
+           { name: 'Menü 2', price: { chf: 780, eur: 530},  available: -1 },
+           { name: 'Menü 3', price: { chf: 1230, eur: 890}, available: -1 },
+           { name: 'Menü 4', price: { chf: 940, eur: 780},  available: -1 },
+           { name: 'Menü 5', price: { chf: 510, eur: 340},  available:  2 },
+           { name: 'Menü 6', price: { chf: 780, eur: 530},  available: -1 },
+           { name: 'Menü 7', price: { chf: 1230, eur: 890}, available: -1 },
+           { name: 'Menü 8', price: { chf: 940, eur: 780},  available: -1 }
+       ], function(err, docs){
+           if (err)throw err;
+           res.json(docs);
+       });
+    });
+
+});
 
 //A Route for Creating a 500 Error (Useful to keep around)
 server.get('/500', function(req, res){

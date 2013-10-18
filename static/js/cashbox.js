@@ -15,18 +15,25 @@
 });*/
 
 
-function CashboxController($scope) {
-    $scope.articles = [
-        { id: 1, name: 'Menü 1', price: { chf: 510, eur: 340}, available: 2, ordered: 0},
-        { id: 2, name: 'Menü 2', price: { chf: 780, eur: 530}, available: -1, ordered: 0},
-        { id: 3, name: 'Menü 3', price: { chf: 1230, eur: 890}, available: -1, ordered: 0},
-        { id: 4, name: 'Menü 4', price: { chf: 940, eur: 780}, available: -1, ordered: 0},
-        { id: 1, name: 'Menü 5', price: { chf: 510, eur: 340}, available: 2, ordered: 0},
-        { id: 2, name: 'Menü 6', price: { chf: 780, eur: 530}, available: -1, ordered: 0},
-        { id: 3, name: 'Menü 7', price: { chf: 1230, eur: 890}, available: -1, ordered: 0},
-        { id: 4, name: 'Menü 8', price: { chf: 940, eur: 780}, available: -1, ordered: 0}
-    ];
+function CashboxController($scope, $http) {
+    $scope.articles = [];
+
     $scope.total = { chf: 0, eur: 0};
+
+    var clearOrder = function() {
+        angular.forEach($scope.articles, function(article){
+            article.ordered = 0;
+        });
+        $scope.total.chf = 0;
+        $scope.total.eur = 0;
+
+    };
+    
+    $http.get('/articles').success(function(data){
+        $scope.articles = data;
+        clearOrder();
+    });
+
 
     var resetGiven = function() {
         $scope.lastOrderAmount = undefined;
@@ -52,15 +59,6 @@ function CashboxController($scope) {
     };
 
 
-    var clearOrder = function() {
-      angular.forEach($scope.articles, function(article){
-        article.ordered = 0;
-      });
-      $scope.total.chf = 0;
-      $scope.total.eur = 0;
-
-    };
-
     $scope.order = function(currency) {
         // todo: send order to server
         $scope.lastOrderAmount = $scope.total[currency];
@@ -77,3 +75,5 @@ function CashboxController($scope) {
     };
 
 }
+
+CashboxController.$inject = ['$scope', '$http'];

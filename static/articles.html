@@ -1,0 +1,39 @@
+<div class="row-fluid cashbox">
+    <div class="span3">
+        <div class="well sidebar-nav">
+            <ul class="nav nav-list">
+                <li ng-repeat="article in articles" ng-class="{active: selectedIndex == $index}">
+                    <a href="" ng-click="selectArticle($index)">{{article.name}}</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+    <div class="span9" ng-controller="ArticleController" ng-show="article">
+        <form name="form">
+            <fieldset>
+                <label>Name</label>
+                <input required maxlength="45" type="text" class="span8" ng-model="article.name">
+                <label>Text Beleg</label>
+                <input maxlength="35" type="text" class="span8" ng-model="article.receipt">
+                <label>Preise</label>
+                <div class="input-append">
+                    <input required class="span4 text-right" type="text" currency ng-model="article.price.chf">
+                    <span class="add-on">CHF</span>
+                </div>
+                <div class="input-append">
+                    <input required class="span4 text-right" type="text" currency ng-model="article.price.eur">
+                    <span class="add-on">EUR</span>
+                </div>
+                <label>Limitierte Anzahl</label>
+                <input class="span2" type="number" placeholder="unlimitiert" ng-model="article.available">
+                <label class="checkbox">
+                    <input name="kitchen" type="checkbox" ng-model="article.kitchen">Zubereitung durch K&uuml;che (<i class="icon-fire"></i>)
+                </label>
+                <label>Gruppe</label>
+                <input ng-model="article.group" maxlength="20" type="text" class="span4">
+            </fieldset>
+            <button type="submit" class="btn" ng-class="{'btn-danger': form.$invalid, 'btn-primary': !form.$invalid}" ng-disabled="form.$invalid || isUnchanged()" ng-click="save()">Speichern</button>
+            <button class="btn btn-inverse delete" ng-click="remove()">L&ouml;schen</button>
+        </form>
+    </div>
+</div>
