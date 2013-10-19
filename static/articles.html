@@ -2,9 +2,14 @@
     <div class="span3">
         <div class="well sidebar-nav">
             <ul class="nav nav-list">
-                <li ng-repeat="article in articles" ng-class="{active: selectedIndex == $index}">
-                    <a href="" ng-click="selectArticle($index)">{{article.name}}</a>
+                <li ng-repeat="article in articles" ng-class="{active: selectedId == article._id}">
+                    <a href="" ng-click="selectArticle(article)" class="clearfix">
+                        <div class="pull-left" ng-class="{inactive: article.active == undefined || !article.active}">{{article.name}} <i ng-show="article.kitchen" class="icon-fire"></i></div>
+                        <div class="pull-right"><span class="badge" ng-show="{{article.available >= 0}}">{{article.available}}</span></div>
+
+                    </a>
                 </li>
+                <li><a href="" ng-click="addArticle()"><em>neuer Artikel</em></a></li>
             </ul>
         </div>
     </div>
@@ -27,7 +32,10 @@
                 <label>Limitierte Anzahl</label>
                 <input class="span2" type="number" placeholder="unlimitiert" ng-model="article.available">
                 <label class="checkbox">
-                    <input name="kitchen" type="checkbox" ng-model="article.kitchen">Zubereitung durch K&uuml;che (<i class="icon-fire"></i>)
+                    <input type="checkbox" ng-model="article.kitchen">Zubereitung durch K&uuml;che (<i class="icon-fire"></i>)
+                </label>
+                <label class="checkbox">
+                    <input type="checkbox" ng-model="article.active">In der Kasse verfügbar
                 </label>
                 <label>Gruppe</label>
                 <input ng-model="article.group" maxlength="20" type="text" class="span4">

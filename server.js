@@ -64,12 +64,19 @@ var withDb = function(callback) {
 
 var withArticles = function(callback) {
   withDb(function(db){
-     callback(db.collection('articles'));
+     callback(db.collection('articles'), db);
   });
 };
 
 var getIdQuery = function(id) {
-    return {_id: ObjectID.createFromHexString(id)}
+    return {_id: ObjectID(id)}
+};
+
+var fetchArticles = function(articles, callback) {
+    articles.find({}, {sort: {name: 1}}).toArray(function(err, docs){
+        if (err) throw err;
+        callback(docs);
+    });
 };
 
 ///////////////////////////////////////////
@@ -91,61 +98,48 @@ server.get('/', function(req,res){
 });
 
 server.get('/articles', function(req, res){
-    withArticles(function(articles){
-        articles.find({}, {sort: {name: 1}}).toArray(function(err, docs){
-            if (err)throw err;
+    withArticles(function(articles, db){
+        fetchArticles(articles, function(docs){
             res.json(docs);
+            db.close();
         });
     });
 });
 
 server.delete('/articles/:id', function(req, res){
-    console.log(req.params.id);
-    withArticles(function(articles){
+    withArticles(function(articles, db){
         articles.remove(getIdQuery(req.params.id), {w: 1}, function(err){
-            if (err) {
-                res.status(500).json(err);
-            } else {
-                res.send(200);
-            }
+            if (err) throw err;
+            fetchArticles(articles, function(docs){
+                res.json(docs);
+                db.close();
+            });
         });
     });
 });
 
 server.post('/articles', function(req, res){
 
-    withArticles(function(articles){
+    withArticles(function(articles, db){
+        var cb = function (err, result) {
+            if (err) throw err;
+            fetchArticles(articles, function (docs) {
+                res.json({saved: req.body, articles: docs});
+                db.close();
+            });
+        };
 
-        var id = articles.save(req.body, {w: 1}, function(err, result){
-           if (err){
-               res.status(500).json(err);
-           }  else {
-               res.send(200, id);
-           }
-        });
+        if (req.body._id) {
+            var id = req.body._id;
+            req.body._id = ObjectID(req.body._id);
+            articles.update(getIdQuery(id), req.body, {w: 1}, cb);
+        } else {
+            articles.insert(req.body, {w: 1}, cb);
+        }
     });
 
 });
 
-server.get('/articles/fixture', function(req, res){
-
-    withArticles(function(articles){
-       articles.insert([
-           { name: 'Menü 1', price: { chf: 510, eur: 340},  available:  2 },
-           { name: 'Menü 2', price: { chf: 780, eur: 530},  available: -1 },
-           { name: 'Menü 3', price: { chf: 1230, eur: 890}, available: -1 },
-           { name: 'Menü 4', price: { chf: 940, eur: 780},  available: -1 },
-           { name: 'Menü 5', price: { chf: 510, eur: 340},  available:  2 },
-           { name: 'Menü 6', price: { chf: 780, eur: 530},  available: -1 },
-           { name: 'Menü 7', price: { chf: 1230, eur: 890}, available: -1 },
-           { name: 'Menü 8', price: { chf: 940, eur: 780},  available: -1 }
-       ], function(err, docs){
-           if (err)throw err;
-           res.json(docs);
-       });
-    });
-
-});
 
 //A Route for Creating a 500 Error (Useful to keep around)
 server.get('/500', function(req, res){

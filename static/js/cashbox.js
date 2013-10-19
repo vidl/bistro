@@ -28,7 +28,7 @@ function CashboxController($scope, $http) {
         $scope.total.eur = 0;
 
     };
-    
+
     $http.get('/articles').success(function(data){
         $scope.articles = data;
         clearOrder();

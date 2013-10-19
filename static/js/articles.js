@@ -1,26 +1,44 @@
 function ArticlesController($scope, $http) {
     $scope.articles = [];
 
-    $http.get('/articles').success(function(data){
-        $scope.articles = data;
-    });
-
-    $scope.selectArticle = function(index) {
-        $scope.selectedIndex = index;
-        $scope.$broadcast('selectArticle', $scope.articles[index]);
+    var findIndexByArticleId = function(id) {
+        var index = undefined;
+        for (var i = 0; i < $scope.articles.length; i++) {
+            if ($scope.articles[i]._id === id){
+                return i;
+            }
+        }
     };
 
-    $scope.$on('updateArticle', function(event, article){
-        event.preventDefault();
-        var index = $scope.selectedIndex;
-        if ($scope.articles[index]._id === article._id) {
-            $scope.articles[index] = article;
-        }
+    $http.get('/articles').success(function(data){
+        $scope.articles = data;
+        if (data.length)
+            $scope.selectArticle(data[0]);
     });
 
-    $scope.$on('removeArticle', function(event, article){
-        $scope.articles.splice($scope.selectedIndex, 1);
-        $scope.selectedIndex = -1;
+    $scope.selectArticle = function(article) {
+        $scope.selectedId = article._id;
+        $scope.$broadcast('selectArticle', article);
+    };
+
+    $scope.addArticle = function() {
+        $scope.selectedId = undefined;
+        $scope.$broadcast('selectArticle', {active: true});
+    };
+
+    $scope.$on('updateArticle', function(event, data){
+        $scope.selectedId = data.saved._id;
+        $scope.articles = data.articles;
+    });
+
+    $scope.$on('removeArticle', function(event, id){
+        var index = findIndexByArticleId(id);
+        if (index >= 0) {
+            $scope.articles.splice(index, 1);
+        }
+        if ($scope.selectedId === id){
+            $scope.selectedId = undefined;
+        }
     });
 
 }
@@ -39,10 +57,10 @@ function ArticleController($scope, $http) {
     };
 
     $scope.save = function() {
-        $http.post('/articles', $scope.article).success(function(){
-            var article = $scope.article;
-            $scope.master = angular.copy(article);
-            $scope.$emit('updateArticle', article);
+        $http.post('/articles', $scope.article).success(function(data){
+            $scope.article = angular.copy(data.saved);
+            $scope.master = data.saved;
+            $scope.$emit('updateArticle', data);
         }).error(function(data){
 
         });
@@ -50,7 +68,7 @@ function ArticleController($scope, $http) {
 
     $scope.remove = function() {
         $http.delete('/articles/' + $scope.article._id).success(function(){
-            $scope.$emit('removeArticle', $scope.article);
+            $scope.$emit('removeArticle', $scope.article._id);
             $scope.article = undefined;
         })
     }

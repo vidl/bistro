@@ -51,6 +51,10 @@ var currencyDiretiveFactory = function($filter) {
             };
 
             ctrl.$parsers.unshift(function(viewValue) {
+                if (viewValue === '.') {
+                    viewValue = '0.';
+                    elm.val(viewValue);
+                }
                 if (POSITIVE_FLOAT_REGEXP.test(viewValue)) {
                     ctrl.$setValidity('float', true);
                     return currency(viewValue.replace(',', '.'));
