@@ -1,14 +1,27 @@
 <div class="row-fluid cashbox">
     <div class="span3">
         <div class="well">
-            <div ng-show="lastOrderAmount">
-                <div class="control-group"><a class="btn disabled">{{lastOrderAmount | currency:lastOrderCurrency}}</a> letzte Bestellung</div>
-                <div class="input-append">
-                    <input class="text-right input-mini" type="text" placeholder="Erhalten" ng-model="given" focus="lastOrderAmount">
-                    <span class="add-on">{{lastOrderCurrency.toUpperCase()}}</span>
-                </div>
-                <div><a class="btn btn-primary disabled">{{((given | currency) - lastOrderAmount) | currency:lastOrderCurrency}}</a> zurück</div>
-            </div>
+            <table class="table table-condensed" ng-show="lastOrderAmount">
+                <tr>
+                    <td><span class="badge">{{lastOrderAmount | currency:lastOrderCurrency}}</span></td>
+                    <td>letzte Bestellung</td>
+                </tr>
+                <tr>
+                    <td>
+                        <div class="input-append">
+                            <input class="text-right input-mini" type="text" placeholder="Erhalten" ng-model="given" focus="lastOrderAmount">
+                            <span class="add-on">{{lastOrderCurrency.toUpperCase()}}</span>
+                        </div>
+                    </td>
+                    <td>erhalten</td>
+                </tr>
+                <tr>
+                    <td>
+                        <span class="badge">{{((given | currency) - lastOrderAmount) | currency:lastOrderCurrency}}</span>
+                    </td>
+                    <td>zurück</td>
+                </tr>
+            </table>
             <table class="table table-striped table-condensed table-large">
                 <tr ng-repeat="article in articles | filter: isOrdered" class="show-on-hover-hook">
                     <td class="text-right">{{article.ordered}}x</td>
