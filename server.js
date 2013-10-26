@@ -80,6 +80,36 @@ var fetchArticles = function(articles, callback) {
     });
 };
 
+
+// ATTENTION: assumes the there are no orders on days in future
+var withNextOrderNo = function(callback) {
+    withCollection('orders', function(orders, db){
+        // select only orders with order numbers
+        var query = {
+            no: { $gt: 0}
+        };
+
+        var sort = [
+            ['_id', -1], // first by id descending which means the most recent order
+            ['no', -1] // then by order number
+        ];
+
+        orders.find(query, {sort: sort, limit: 1}, function(err, cursor){
+            if (err) throw err;
+            cursor.nextObject(function(err, doc){
+                var orderNo = 1;
+                if (doc) {
+                    console.log('Found an order today with a order.no: ' + doc);
+                    orderNo = doc.no + 1;
+                } else {
+                    console.log('No orders yet with an no, use 1');
+                }
+                callback(orders, db, orderNo);
+            });
+        });
+    });
+};
+
 ///////////////////////////////////////////
 //              Routes                   //
 ///////////////////////////////////////////
@@ -139,23 +169,53 @@ server.post('/articles', function(req, res){
     });
 });
 
+server.get('/orders', function(req, res){
+    withCollection('orders', function(orders, db){
+        orders.find({}, {sort: {_id: -1}}).toArray(function(err, docs){
+            if (err) throw err;
+            _.each(docs, function(order){
+               order.ts = order._id.getTimestamp();
+            });
+            res.json(docs);
+            db.close();
+        });
+    });
+});
+
 server.post('/orders', function(req,res){
     function removeUnsuedFieldsFromArticles(articles) {
         return _.map(articles, function(article){
-            return _.pick(article, 'name', 'receipt', 'price', 'ordered');
+            return _.pick(article, 'name', 'receipt', 'price', 'ordered', 'kitchen');
         });
     }
     var order = req.body;
-    order.articles = removeUnsuedFieldsFromArticles(order.articles);
-
-    withCollection('orders', function(orders, db){
-        orders.insert(order, {w: 1}, function(err){
+    order.kitchen = _.findWhere(order.articles, {kitchen: true}) != undefined;
+    withNextOrderNo(function(orders, db, nextOrderNo){
+        if (order.kitchen) {
+            console.log('Next order no is ' + nextOrderNo);
+            order.no = nextOrderNo;
+        }
+        order.articles = removeUnsuedFieldsFromArticles(order.articles);
+        orders.insert(order, {w: 0}, function(err){
             db.close();
             if (err) throw err;
-            res.json(order._id);
+            res.json({_id: order._id, no: order.no});
         });
-   }); 
+
+    });
+
 });
+
+server.delete('/orders/:id', function(req, res){
+    withCollection('orders', function(orders, db){
+        orders.remove(getIdQuery(req.params.id), {w: 1}, function(err){
+            db.close();
+            if (err) throw err;
+            res.send('done');
+        });
+    });
+});
+
 
 
 //A Route for Creating a 500 Error (Useful to keep around)

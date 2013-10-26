@@ -67,13 +67,6 @@ var currencyDiretiveFactory = function($filter) {
     };
 };
 
-var configFactory = function ($routeProvider) {
-    $routeProvider.
-        when('/cashbox', {templateUrl: 'cashbox.html', controller: CashboxController}).
-        when('/articles', {templateUrl: 'articles.html', controller: ArticlesController}).
-        otherwise({redirectTo: '/cashbox'});
-};
-
 var messageServiceFactory = function($rootScope) {
     var sendMessage = function(msg, type) {
         $rootScope.$broadcast('message', {msg: msg, type: type});
@@ -92,6 +85,14 @@ var messageServiceFactory = function($rootScope) {
     };
 };
 
+var configFactory = function ($routeProvider) {
+    $routeProvider.
+        when('/cashbox', {templateUrl: 'cashbox.html', controller: CashboxController}).
+        when('/articles', {templateUrl: 'articles.html', controller: ArticlesController}).
+        when('/orders', {templateUrl: 'orders.html', controller: OrdersController}).
+        otherwise({redirectTo: '/cashbox'});
+};
+
 angular.module('bistro', [])
     .config(['$routeProvider', configFactory])
     .filter('currency', currencyFilterFactory)
@@ -103,7 +104,8 @@ function NavController($scope, $location) {
 
     $scope.menuItems = [
         { name: 'Kasse', url: '/cashbox'},
-        { name: 'Artikel', url: '/articles'}
+        { name: 'Artikel', url: '/articles'},
+        { name: 'Bestellungen', url: '/orders'}
     ];
 
     $scope.isActive = function(menuItem) {

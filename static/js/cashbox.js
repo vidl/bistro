@@ -72,9 +72,12 @@ function CashboxController($scope, $http, messageService) {
         $http.post('/orders', {
             articles: getOrderedArticles(),
             currency: currency,
+            total: $scope.total[currency],
             kitchenNotes: $scope.kitchenNotes
-        }).success(function(){
-            messageService.info('Bestellung erfolgreich abgeschickt');
+        }).success(function(data){
+            if (data.no) {
+                messageService.info('Bestellung ' + data.no + ' erfolgreich abgeschickt');
+            }
             $scope.lastOrderAmount = $scope.total[currency];
             $scope.lastOrderCurrency = currency;
             $scope.kitchenNotes = undefined;

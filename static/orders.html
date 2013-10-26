@@ -1,0 +1,36 @@
+<div class="row-fluid orders">
+    <div class="span3">
+        <div class="well sidebar-nav">
+            <ul class="nav nav-list">
+                <li ng-repeat="order in orders" ng-class="{active: isSelected(order)}">
+                    <a href="" ng-click="select(order)" class="clearfix" >
+                        <div class="pull-left">{{ order.ts | date:'HH:mm'}}<span ng-show="order.no">, Nr. {{ order.no }}</span></div>
+                        <div class="pull-right">
+                            <i ng-show="order.kitchen" class="icon-fire"></i>
+                            {{ order.total | currency:order.currency}}
+                        </div>
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </div>
+    <div class="span9" ng-show="selectedOrder">
+        <h4>Bestellung vom {{selectedOrder.ts | date:'dd.mm.yyyy HH:mm'}}</h4>
+        <div ng-show="selectedOrder.no">Bestellnummer: {{selectedOrder.no}}</div>
+        <table class="table table-striped table-condensed">
+            <tr ng-repeat="article in selectedOrder.articles">
+                <td class="text-right">{{article.ordered}}x</td>
+                <td class="text-left">{{article.name}}</td>
+            </tr>
+        </table>
+
+        <div class="form-inline">
+            <button class="btn" ng-click="!removeEnabled || remove()" ng-class="{ disabled: !removeEnabled, 'btn-inverse': removeEnabled}">Löschen</button>
+            <label class="checkbox">
+                <input type="checkbox" ng-model="removeEnabled" />Ja, ich hab's mir gut &uuml;berlegt
+            </label>
+        </div>
+
+    </div>
+</div>
+
