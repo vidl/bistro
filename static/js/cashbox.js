@@ -15,7 +15,7 @@
 });*/
 
 
-function CashboxController($scope, $http) {
+function CashboxController($scope, $http, messageService) {
     $scope.articles = [];
 
     $scope.total = { chf: 0, eur: 0};
@@ -58,12 +58,28 @@ function CashboxController($scope, $http) {
         $scope.total.eur -= article.price.eur;
     };
 
+    var getOrderedArticles = function() {
+        var articles = [];
+        angular.forEach($scope.articles, function(article){
+           if ($scope.isOrdered(article)) {
+               articles.push(article);
+           }
+        });
+        return articles;
+    };
 
     $scope.order = function(currency) {
-        // todo: send order to server
-        $scope.lastOrderAmount = $scope.total[currency];
-        $scope.lastOrderCurrency = currency;
-        clearOrder();
+        $http.post('/orders', {
+            articles: getOrderedArticles(),
+            currency: currency,
+            kitchenNotes: $scope.kitchenNotes
+        }).success(function(){
+            messageService.info('Bestellung erfolgreich abgeschickt');
+            $scope.lastOrderAmount = $scope.total[currency];
+            $scope.lastOrderCurrency = currency;
+            $scope.kitchenNotes = undefined;
+            clearOrder();
+        });
     };
 
     $scope.isOrdered = function(article) {
@@ -76,4 +92,4 @@ function CashboxController($scope, $http) {
 
 }
 
-CashboxController.$inject = ['$scope', '$http'];
+CashboxController.$inject = ['$scope', '$http', 'messageService'];

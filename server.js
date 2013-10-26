@@ -4,7 +4,8 @@ var connect = require('connect')
     , io = require('socket.io')
     , port = (process.env.PORT || 8081)
     , MongoClient = require('mongodb').MongoClient
-    , ObjectID = require('mongodb').ObjectID;
+    , ObjectID = require('mongodb').ObjectID
+    , _ = require('underscore');
 
 
 //Setup Express
@@ -62,9 +63,9 @@ var withDb = function(callback) {
     });
 };
 
-var withArticles = function(callback) {
+var withCollection = function(collection, callback) {
   withDb(function(db){
-     callback(db.collection('articles'), db);
+     callback(db.collection(collection), db);
   });
 };
 
@@ -98,7 +99,7 @@ server.get('/', function(req,res){
 });
 
 server.get('/articles', function(req, res){
-    withArticles(function(articles, db){
+    withCollection('articles', function(articles, db){
         fetchArticles(articles, function(docs){
             res.json(docs);
             db.close();
@@ -107,7 +108,7 @@ server.get('/articles', function(req, res){
 });
 
 server.delete('/articles/:id', function(req, res){
-    withArticles(function(articles, db){
+    withCollection('articles', function(articles, db){
         articles.remove(getIdQuery(req.params.id), {w: 1}, function(err){
             if (err) throw err;
             fetchArticles(articles, function(docs){
@@ -119,9 +120,8 @@ server.delete('/articles/:id', function(req, res){
 });
 
 server.post('/articles', function(req, res){
-
-    withArticles(function(articles, db){
-        var cb = function (err, result) {
+    withCollection('articles', function(articles, db){
+        var insertOrUpdateHandler = function (err, result) {
             if (err) throw err;
             fetchArticles(articles, function (docs) {
                 res.json({saved: req.body, articles: docs});
@@ -132,12 +132,29 @@ server.post('/articles', function(req, res){
         if (req.body._id) {
             var id = req.body._id;
             req.body._id = ObjectID(req.body._id);
-            articles.update(getIdQuery(id), req.body, {w: 1}, cb);
+            articles.update(getIdQuery(id), req.body, {w: 1}, insertOrUpdateHandler);
         } else {
-            articles.insert(req.body, {w: 1}, cb);
+            articles.insert(req.body, {w: 1}, insertOrUpdateHandler);
         }
     });
+});
 
+server.post('/orders', function(req,res){
+    function removeUnsuedFieldsFromArticles(articles) {
+        return _.map(articles, function(article){
+            return _.pick(article, 'name', 'receipt', 'price', 'ordered');
+        });
+    }
+    var order = req.body;
+    order.articles = removeUnsuedFieldsFromArticles(order.articles);
+
+    withCollection('orders', function(orders, db){
+        orders.insert(order, {w: 1}, function(err){
+            db.close();
+            if (err) throw err;
+            res.json(order._id);
+        });
+   }); 
 });
 
 

@@ -74,9 +74,28 @@ var configFactory = function ($routeProvider) {
         otherwise({redirectTo: '/cashbox'});
 };
 
+var messageServiceFactory = function($rootScope) {
+    var sendMessage = function(msg, type) {
+        $rootScope.$broadcast('message', {msg: msg, type: type});
+    };
+
+    return {
+        success: function(msg) { sendMessage(msg, 'success'); },
+        info: function(msg) { sendMessage(msg, 'info'); },
+        warning: function(msg) { sendMessage(msg, 'warning'); },
+        error: function(msg) { sendMessage(msg, 'error'); },
+        listen: function($scope, callback) {
+            $scope.$on('message', function(event, data) {
+                callback(data.type, data.msg);
+            });
+        }
+    };
+};
+
 angular.module('bistro', [])
     .config(['$routeProvider', configFactory])
     .filter('currency', currencyFilterFactory)
+    .service('messageService', ['$rootScope', messageServiceFactory])
     .directive('focus', ['$parse', '$timeout', focusDirectiveFactory])
     .directive('currency', ['$filter', currencyDiretiveFactory]);
 

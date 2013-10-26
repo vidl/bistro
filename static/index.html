@@ -15,22 +15,30 @@
 </head>
 
 <body>
-
-<div class="navbar navbar-inverse navbar-fixed-top">
-    <div class="navbar-inner">
-        <div class="container">
-            <a class="brand" href=".">Bistro Kasse</a>
-            <div class="nav-collapse collapse">
-                <ul class="nav" ng-controller="NavController">
-                    <li ng-class="{active: isActive(menuItem)}" ng-repeat="menuItem in menuItems"><a href="/#{{menuItem.url}}">{{menuItem.name}}</a></li>
-                </ul>
-            </div><!--/.nav-collapse -->
+    <div id="wrap">
+        <div class="navbar navbar-inverse navbar-fixed-top">
+            <div class="navbar-inner">
+                <div class="container">
+                    <a class="brand" href=".">Bistro Kasse</a>
+                    <div class="nav-collapse collapse">
+                        <ul class="nav" ng-controller="NavController">
+                            <li ng-class="{active: isActive(menuItem)}" ng-repeat="menuItem in menuItems"><a href="/#{{menuItem.url}}">{{menuItem.name}}</a></li>
+                        </ul>
+                    </div><!--/.nav-collapse -->
+                </div>
+            </div>
         </div>
-    </div>
-</div>
 
-<div class="container-fluid" ng-view>
-</div> <!-- /container -->
+
+        <div class="container-fluid" ng-view>
+        </div> <!-- /container -->
+
+        <div id="push"></div>
+    </div>
+
+    <div id="footer" ng-controller="MessageController" ng-show="msg" class="alert alert-block {{tpye != 'warning' ? 'alert-' + type : ''}}">
+            {{msg}}
+    </div>
 
 <!-- Le javascript
 ================================================== -->
@@ -41,6 +49,7 @@
 <script src="/js/bistro.js"></script>
 <script src="/js/cashbox.js"></script>
 <script src="/js/articles.js"></script>
+<script src="/js/message.js"></script>
 
 
 </body>
