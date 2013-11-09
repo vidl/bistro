@@ -25,7 +25,8 @@
             </tr>
         </table>
         <div class="form-inline">
-            <a class="btn" href="/receipts/{{selectedOrder._id}}">Beleg-Ansicht</a>
+            <a class="btn" target="_blank" href="/receipts/{{selectedOrder._id}}">Beleg-Ansicht</a>
+            <a class="btn" target="_blank" href="/kitchenorder/{{selectedOrder._id}}">Bestell-Ansicht</a>
             <button class="btn" ng-click="!removeEnabled || remove()" ng-class="{ disabled: !removeEnabled, 'btn-inverse': removeEnabled}">Löschen</button>
             <label class="checkbox">
                 <input type="checkbox" ng-model="removeEnabled" />Ja, ich hab's mir gut &uuml;berlegt

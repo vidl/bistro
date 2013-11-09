@@ -27,20 +27,25 @@ server.configure(function(){
     //server.engine('html', require('ejs').renderFile);
 });
 
-var receiptDirectory = 'receipts';
+var pdfDirectory = 'pdfs';
 
-if (!fs.existsSync(receiptDirectory)) {
-    fs.mkdirSync(receiptDirectory);
+if (!fs.existsSync(pdfDirectory)) {
+    fs.mkdirSync(pdfDirectory);
 }
 
 var phantom_instance = null;
-var phantom_page = null;
+var phantom_receipt_page = null;
+var phantom_order_page = null;
 phantom.create("--web-security=no", "--ignore-ssl-errors=yes", { port: 12345 }, function (ph) {
     console.log("Phantom Bridge Initiated");
     phantom_instance = ph;
     ph.createPage(function(page){
-        console.log("Phantom page created");
-       phantom_page = page;
+        console.log("Phantom receipt page created");
+       phantom_receipt_page = page;
+    });
+    ph.createPage(function(page){
+        console.log("Phantom order page created");
+        phantom_order_page = page;
     });
 });
 
@@ -141,15 +146,13 @@ var getSettings = function(callback) {
     });
 };
 
-var printFile = function(req, printer, file, media) {
+var printFile = function(req, printer, file, options) {
     var args = [];
     args.push('-d');
     args.push(printer);
-    if (media) {
-        args.push('-o');
-        args.push(' media=' + media);
+    if (options) {
+        args.push(options);
     }
-    //args.push('-o fitplot');
     args.push(file);
     childProcess.exec('lp ' + args.join(' '), function(error, stdout, stderr){
         if (error != null) {
@@ -163,9 +166,19 @@ var printFile = function(req, printer, file, media) {
 var printOnReceiptPrinter = function(req, file) {
     getSettings(function(settings){
         if (settings.receiptPrinter) {
-            printFile(req, settings.receiptPrinter, file); // 'RP80x297');
+            printFile(req, settings.receiptPrinter, file);
         } else {
             sendErrorMessage(req, 'Kein Beleg-Drucker definiert');
+        }
+    });
+};
+
+var printOnOrderPrinter = function(req, file) {
+    getSettings(function(settings){
+        if (settings.orderPrinter) {
+            printFile(req, settings.orderPrinter, file, '-o media=a5 -o fit-to-page');
+        } else {
+            sendErrorMessage(req, 'Kein Bestell-Drucker definiert');
         }
     });
 };
@@ -175,18 +188,18 @@ var printReceipt = function(req, order) {
     if (order.no)
         orderId += '-' + order.no;
     var url = (req.connection.encrypted ? 'https' : 'http')+ '://' +  req.header('host') + '/receipts/' + order._id.toHexString();
-    phantom_page.open(url, function (status) {
+    phantom_receipt_page.open(url, function (status) {
         if (status == "success") {
-            phantom_page.evaluate(function() {
+            phantom_receipt_page.evaluate(function() {
                 return {
                     width: 500, //document.getElementById("container").offsetWidth,
                     height: document.getElementById("container").offsetHeight * 2
                 };
             }, function(size) {
-                phantom_page.set('viewportSize', size, function(){
-                    var filename = receiptDirectory + '/' + orderId + '.pdf';
-                    phantom_page.render(filename, function(){
-                        printOnReceiptPrinter(req, filename);
+                phantom_receipt_page.set('viewportSize', size, function(){
+                    var filename = pdfDirectory + '/' + orderId + '-receipt.pdf';
+                    phantom_receipt_page.render(filename, function(){
+                        //printOnReceiptPrinter(req, filename);
                     });
                 });
             });
@@ -195,6 +208,31 @@ var printReceipt = function(req, order) {
             sendErrorMessage(req, 'Beleg konnte nicht erstellt werden: ' + JSON.stringify(status));
         }
     })
+};
+
+var printKitchenOrder = function(req, order) {
+    var orderId = moment(order._id.getTimestamp()).format('YYYYMMDD-HHmmss') + '-' + order.no;
+    var url = (req.connection.encrypted ? 'https' : 'http')+ '://' +  req.header('host') + '/kitchenorder/' + order._id.toHexString();
+    phantom_order_page.open(url, function (status) {
+        if (status == "success") {
+            phantom_order_page.evaluate(function() {
+                return {
+                    width: document.getElementById("container").offsetWidth,
+                    height: document.getElementById("container").offsetHeight * 2
+                };
+            }, function(size) {
+                phantom_order_page.set('viewportSize', size, function(){
+                    var filename = pdfDirectory + '/' + orderId + '-kitchenorder.pdf';
+                    phantom_order_page.render(filename, function(){
+                        printOnOrderPrinter(req, filename);
+                    });
+                });
+            });
+        } else {
+            console.log('Error while opening ' + url + ': ' + status);
+            sendErrorMessage(req, 'Küchen-Bestellung konnte nicht erstellt werden: ' + JSON.stringify(status));
+        }
+    });
 };
 
 ///////////////////////////////////////////
@@ -290,6 +328,9 @@ server.post('/orders', function(req, res){
                 db.close();
                 if (err) throw err;
                 printReceipt(req, order);
+                if (order.kitchen) {
+                    printKitchenOrder(req, order);
+                }
                 res.json({_id: order._id, no: order.no});
             });
 
@@ -336,6 +377,21 @@ server.get('/receipts/:id', function(req, res){
             });
        });
    });
+});
+
+server.get('/kitchenorder/:id', function(req, res){
+    withCollection('orders', function(orders, db){
+        orders.findOne(getIdQuery(req.params.id), {}, function(err, doc){
+            db.close();
+            if (err) throw err;
+            res.render('kitchenorder.ejs', {
+                locals: {
+                    order: doc,
+                    moment: moment
+                }
+            });
+        });
+    });
 });
 
 server.get('/printers', function(req, res){
