@@ -17,14 +17,15 @@
     <div class="span9" ng-show="selectedOrder">
         <h4>Bestellung vom {{selectedOrder.ts | date:'dd.MM.yyyy HH:mm'}}</h4>
         <div ng-show="selectedOrder.no">Bestellnummer: {{selectedOrder.no}}</div>
+        <p ng-show="selectedOrder.kitchenNotes">Hinweise für die Küche: <em>{{selectedOrder.kitchenNotes}}</em></p>
         <table class="table table-striped table-condensed">
             <tr ng-repeat="article in selectedOrder.articles">
                 <td class="text-right">{{article.ordered}}x</td>
                 <td class="text-left">{{article.name}}</td>
             </tr>
         </table>
-
         <div class="form-inline">
+            <a class="btn" href="/receipts/{{selectedOrder._id}}">Beleg-Ansicht</a>
             <button class="btn" ng-click="!removeEnabled || remove()" ng-class="{ disabled: !removeEnabled, 'btn-inverse': removeEnabled}">Löschen</button>
             <label class="checkbox">
                 <input type="checkbox" ng-model="removeEnabled" />Ja, ich hab's mir gut &uuml;berlegt

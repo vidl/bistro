@@ -9,6 +9,7 @@ var connect = require('connect')
     , phantom = require('phantom')
     , fs = require('fs')
     , childProcess = require('child_process')
+    , moment = require('moment')
     ;
 
 
@@ -118,7 +119,7 @@ var withNextOrderNo = function(callback) {
             cursor.nextObject(function(err, doc){
                 var orderNo = 1;
                 if (doc) {
-                    console.log('Found an order today with a order.no: ' + doc);
+                    console.log('Found an order today with a order.no: ' + doc.no);
                     orderNo = doc.no + 1;
                 } else {
                     console.log('No orders yet with an no, use 1');
@@ -140,10 +141,15 @@ var getSettings = function(callback) {
     });
 };
 
-var printFile = function(req, printer, file) {
+var printFile = function(req, printer, file, media) {
     var args = [];
     args.push('-d');
     args.push(printer);
+    if (media) {
+        args.push('-o');
+        args.push(' media=' + media);
+    }
+    //args.push('-o fitplot');
     args.push(file);
     childProcess.exec('lp ' + args.join(' '), function(error, stdout, stderr){
         if (error != null) {
@@ -157,7 +163,7 @@ var printFile = function(req, printer, file) {
 var printOnReceiptPrinter = function(req, file) {
     getSettings(function(settings){
         if (settings.receiptPrinter) {
-            printFile(req, settings.receiptPrinter, file);
+            printFile(req, settings.receiptPrinter, file); // 'RP80x297');
         } else {
             sendErrorMessage(req, 'Kein Beleg-Drucker definiert');
         }
@@ -165,14 +171,26 @@ var printOnReceiptPrinter = function(req, file) {
 };
 
 var printReceipt = function(req, order) {
-    var orderId = order._id.toHexString();
-    var url = (req.connection.encrypted ? 'https' : 'http')+ '://' +  req.header('host') + '/receipts/' + orderId;
+    var orderId = moment(order._id.getTimestamp()).format('YYYYMMDD-HHmmss');
+    if (order.no)
+        orderId += '-' + order.no;
+    var url = (req.connection.encrypted ? 'https' : 'http')+ '://' +  req.header('host') + '/receipts/' + order._id.toHexString();
     phantom_page.open(url, function (status) {
         if (status == "success") {
-            var filename = receiptDirectory + '/' + orderId + '.pdf';
-            phantom_page.render(filename, function(){
-                printOnReceiptPrinter(req, filename);
-            })
+            phantom_page.evaluate(function() {
+                return {
+                    width: 500, //document.getElementById("container").offsetWidth,
+                    height: document.getElementById("container").offsetHeight * 2
+                };
+            }, function(size) {
+                console.log('size is '  + JSON.stringify(size));
+                phantom_page.set('viewportSize', size, function(){
+                    var filename = receiptDirectory + '/' + orderId + '.pdf';
+                    phantom_page.render(filename, function(){
+                        printOnReceiptPrinter(req, filename);
+                    });
+                });
+            });
         } else {
             console.log('Error while opening ' + url + ': ' + status);
             sendErrorMessage(req, 'Beleg konnte nicht erstellt werden: ' + JSON.stringify(status));
@@ -293,7 +311,13 @@ server.get('/receipts/:id', function(req, res){
            db.close();
            if (err) throw err;
             res.render('receipt.ejs', {
-                locals: doc
+                locals: {
+                    order: doc,
+                    formatCurrency: function(amount) {
+                        return (amount / 100).toFixed(2);
+                    },
+                    moment: moment
+                }
             });
        });
    });
