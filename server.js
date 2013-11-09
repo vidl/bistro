@@ -8,6 +8,7 @@ var connect = require('connect')
     , _ = require('underscore')
     , phantom = require('phantom')
     , fs = require('fs')
+    , childProcess = require('child_process')
     ;
 
 
@@ -74,25 +75,6 @@ var sendInfoMessage = function(req, msg) {
     io.sockets.emit('message', {type: 'info', msg: msg});
 };
 
-var printReceipt = function(req, order) {
-    var orderId = order._id.toHexString();
-    var url = (req.connection.encrypted ? 'https' : 'http')+ '://' +  req.header('host') + '/receipts/' + orderId;
-    phantom_page.open(url, function (status) {
-        if (status == "success") {
-            var filename = receiptDirectory + '/' + orderId + '.pdf';
-            phantom_page.render(filename, function(){
-                console.log('rendered ' + filename);
-                sendInfoMessage(req, 'Beleg bereit zum drucken');
-                phantom_page.close();
-            })
-        } else {
-            console.log('Error while opening ' + url + ': ' + status);
-            sendErrorMessage(req, 'Beleg konnte nicht erstellt werden: ' + JSON.stringify(status));
-        }
-    })
-};
-
-
 var withDb = function(callback) {
     MongoClient.connect('mongodb://127.0.0.1:27017/bistro', function(err, db) {
         if(err) throw err;
@@ -145,6 +127,57 @@ var withNextOrderNo = function(callback) {
             });
         });
     });
+};
+
+
+var getSettings = function(callback) {
+    withCollection('settings', function(settings, db){
+        settings.findOne({}, {}, function(err, doc){
+            db.close();
+            if (err) throw err;
+            callback(doc || {});
+        });
+    });
+};
+
+var printFile = function(req, printer, file) {
+    var args = [];
+    args.push('-d');
+    args.push(printer);
+    args.push(file);
+    childProcess.exec('lp ' + args.join(' '), function(error, stdout, stderr){
+        if (error != null) {
+            var errorMsg = 'Fehler beim Drucken auf ' + settings.receiptPrinter + ': ' + stderr;
+            console.log(errorMsg);
+            sendErrorMessage(req, errorMsg);
+        }
+    });
+};
+
+var printOnReceiptPrinter = function(req, file) {
+    getSettings(function(settings){
+        if (settings.receiptPrinter) {
+            printFile(req, settings.receiptPrinter, file);
+        } else {
+            sendErrorMessage(req, 'Kein Beleg-Drucker definiert');
+        }
+    });
+};
+
+var printReceipt = function(req, order) {
+    var orderId = order._id.toHexString();
+    var url = (req.connection.encrypted ? 'https' : 'http')+ '://' +  req.header('host') + '/receipts/' + orderId;
+    phantom_page.open(url, function (status) {
+        if (status == "success") {
+            var filename = receiptDirectory + '/' + orderId + '.pdf';
+            phantom_page.render(filename, function(){
+                printOnReceiptPrinter(req, filename);
+            })
+        } else {
+            console.log('Error while opening ' + url + ': ' + status);
+            sendErrorMessage(req, 'Beleg konnte nicht erstellt werden: ' + JSON.stringify(status));
+        }
+    })
 };
 
 ///////////////////////////////////////////
@@ -233,7 +266,7 @@ server.post('/orders', function(req, res){
             order.no = nextOrderNo;
         }
         order.articles = removeUnsuedFieldsFromArticles(order.articles);
-        orders.insert(order, {w: 0}, function(err){
+        orders.insert(order, {w: 1}, function(err){
             db.close();
             if (err) throw err;
             printReceipt(req, order);
@@ -266,6 +299,37 @@ server.get('/receipts/:id', function(req, res){
    });
 });
 
+server.get('/printers', function(req, res){
+    childProcess.exec('lpstat -a | cut -d " " -f 1', function(error, stdout, stderr) {
+        var printers = stdout.split(/\n/);
+        printers.splice(printers.length - 1 , 1); // remove the last (empty) item
+        res.json(printers);
+    });
+});
+
+server.get('/settings', function(req, res){
+    getSettings(function(settings){
+        res.json(settings);
+    });
+});
+
+server.post('/settings', function(req, res){
+    withCollection('settings', function(settings, db){
+        var insertOrUpdateHandler = function(err, result) {
+            if (err) throw err;
+            db.close();
+            res.send('done');
+        };
+        if (req.body._id) {
+            var id = req.body._id;
+            req.body._id = ObjectID(req.body._id);
+            settings.update(getIdQuery(id), req.body, {w: 1}, insertOrUpdateHandler);
+        } else {
+          settings.insert(req.body, {w: 1}, insertOrUpdateHandler);
+        }
+
+    });
+});
 
 //A Route for Creating a 500 Error (Useful to keep around)
 server.get('/500', function(req, res){

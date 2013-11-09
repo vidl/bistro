@@ -107,10 +107,11 @@ var configFactory = function ($routeProvider) {
         when('/cashbox', {templateUrl: 'cashbox.html', controller: CashboxController}).
         when('/articles', {templateUrl: 'articles.html', controller: ArticlesController}).
         when('/orders', {templateUrl: 'orders.html', controller: OrdersController}).
+        when('/settings', {templateUrl: 'settings.html', controller: SettingsController}).
         otherwise({redirectTo: '/cashbox'});
 };
 
-angular.module('bistro', [])
+angular.module('bistro', ['ui.bootstrap'])
     .config(['$routeProvider', configFactory])
     .filter('currency', currencyFilterFactory)
     .service('messageService', ['$rootScope', messageServiceFactory])
@@ -123,7 +124,8 @@ function NavController($scope, $location) {
     $scope.menuItems = [
         { name: 'Kasse', url: '/cashbox'},
         { name: 'Artikel', url: '/articles'},
-        { name: 'Bestellungen', url: '/orders'}
+        { name: 'Bestellungen', url: '/orders'},
+        { name: 'Einstellungen', url: '/settings'}
     ];
 
     $scope.isActive = function(menuItem) {

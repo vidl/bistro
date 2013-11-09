@@ -1,0 +1,20 @@
+<div class="settings">
+    <div class="row-fluid">
+
+        <form class="form-horizontal">
+            <div class="control-group">
+                <label class="control-label" for="receiptPrinter">Beleg-Drucker</label>
+                <div class="controls">
+                    <select id="receiptPrinter" placeholder="bitte wählen" ng-model="settings.receiptPrinter" required ng-options="printer for printer in printers"></select>
+                </div>
+            </div>
+            <div class="control-group">
+                <label class="control-label" for="orderPrinter">Bestell-Drucker</label>
+                <div class="controls">
+                    <select id="orderPrinter" placeholder="bitte wählen" ng-model="settings.orderPrinter" required ng-options="printer for printer in printers"></select>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary" ng-click="save()">Speichern</button>
+        </form>
+    </div>
+</div>
