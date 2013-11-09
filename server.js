@@ -118,7 +118,7 @@ var withNextOrderNo = function(callback) {
             if (err) throw err;
             cursor.nextObject(function(err, doc){
                 var orderNo = 1;
-                if (doc) {
+                if (doc && moment().startOf('day').isBefore(moment(doc._id.getTimestamp()))) {
                     console.log('Found an order today with a order.no: ' + doc.no);
                     orderNo = doc.no + 1;
                 } else {
@@ -183,7 +183,6 @@ var printReceipt = function(req, order) {
                     height: document.getElementById("container").offsetHeight * 2
                 };
             }, function(size) {
-                console.log('size is '  + JSON.stringify(size));
                 phantom_page.set('viewportSize', size, function(){
                     var filename = receiptDirectory + '/' + orderId + '.pdf';
                     phantom_page.render(filename, function(){
@@ -279,16 +278,21 @@ server.post('/orders', function(req, res){
     var order = req.body;
     order.kitchen = _.findWhere(order.articles, {kitchen: true}) != undefined;
     withNextOrderNo(function(orders, db, nextOrderNo){
-        if (order.kitchen) {
-            console.log('Next order no is ' + nextOrderNo);
-            order.no = nextOrderNo;
-        }
-        order.articles = removeUnsuedFieldsFromArticles(order.articles);
-        orders.insert(order, {w: 1}, function(err){
-            db.close();
+        var articleIds = _.map(order.articles, function(article) { return ObjectID(article._id); });
+        db.collection('articles').update({_id: {$in: articleIds}, available: {$gt: 0}}, {$inc:{ available: -1}}, {w: 1, multi: true}, function(err, result){
             if (err) throw err;
-            printReceipt(req, order);
-            res.json({_id: order._id, no: order.no});
+            if (order.kitchen) {
+                console.log('Next order no is ' + nextOrderNo);
+                order.no = nextOrderNo;
+            }
+            order.articles = removeUnsuedFieldsFromArticles(order.articles);
+            orders.insert(order, {w: 1}, function(err){
+                db.close();
+                if (err) throw err;
+                printReceipt(req, order);
+                res.json({_id: order._id, no: order.no});
+            });
+
         });
 
     });
@@ -304,6 +308,17 @@ server.delete('/orders/:id', function(req, res){
         });
     });
 });
+
+server.get('/deleteorders', function(req, res){
+    withCollection('orders', function(orders, db){
+        orders.remove({}, {w: 1}, function(err){
+            db.close();
+            if (err) throw err;
+            res.send('done');
+        });
+    });
+});
+
 
 server.get('/receipts/:id', function(req, res){
    withCollection('orders', function(orders, db){
