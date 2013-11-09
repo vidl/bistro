@@ -1,0 +1,18 @@
+<html>
+
+<body>
+Bestellung
+<table border=1>
+    <% for(var i = 0; i < articles.length; i++) {
+        var article = articles[i];
+    %>
+    <tr>
+        <td><%= article.name %></td>
+        <td><%= article.ordered %> &times; <%= article.price[currency] %></td>
+        <td><%= article.ordered * article.price[currency] %></td>
+    </tr>
+    <% } %>
+</table>
+<p>Total: <%= total %> <%= currency %></p>
+</body>
+</html>

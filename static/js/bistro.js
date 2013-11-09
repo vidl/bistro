@@ -85,6 +85,23 @@ var messageServiceFactory = function($rootScope) {
     };
 };
 
+var socketIoFactory = function() {
+    var socket = io.connect();
+
+    return {
+        on: function(event, scope, cb) {
+            socket.on(event, function(data){
+                scope.$apply(function(){
+                    cb(data);
+                })
+            });
+        },
+        emit: function(event, data) {
+            socket.emit(event, data);
+        }
+    };
+};
+
 var configFactory = function ($routeProvider) {
     $routeProvider.
         when('/cashbox', {templateUrl: 'cashbox.html', controller: CashboxController}).
@@ -97,6 +114,7 @@ angular.module('bistro', [])
     .config(['$routeProvider', configFactory])
     .filter('currency', currencyFilterFactory)
     .service('messageService', ['$rootScope', messageServiceFactory])
+    .service('socketIo', ['$rootScope', socketIoFactory])
     .directive('focus', ['$parse', '$timeout', focusDirectiveFactory])
     .directive('currency', ['$filter', currencyDiretiveFactory]);
 

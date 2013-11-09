@@ -1,11 +1,14 @@
 //setup Dependencies
 var connect = require('connect')
     , express = require('express')
-    , io = require('socket.io')
+    , Io = require('socket.io')
     , port = (process.env.PORT || 8081)
     , MongoClient = require('mongodb').MongoClient
     , ObjectID = require('mongodb').ObjectID
-    , _ = require('underscore');
+    , _ = require('underscore')
+    , phantom = require('phantom')
+    , fs = require('fs')
+    ;
 
 
 //Setup Express
@@ -16,10 +19,27 @@ server.configure(function(){
     server.set("view engine", 'ejs');
     server.use(connect.bodyParser());
     server.use(express.cookieParser());
-    server.use(express.session({ secret: "shhhhhhhhh!"}));
+    server.use(express.session({ secret: 'N6/G0L6oqTKw+IGLRNoR2ImpH9AdpmHU5Xun2BV7Rw3RLvOnpFoiRjXEZbILcr+b'}));
     server.use(connect.static(__dirname + '/static'));
     server.use(server.router);
     //server.engine('html', require('ejs').renderFile);
+});
+
+var receiptDirectory = 'receipts';
+
+if (!fs.existsSync(receiptDirectory)) {
+    fs.mkdirSync(receiptDirectory);
+}
+
+var phantom_instance = null;
+var phantom_page = null;
+phantom.create("--web-security=no", "--ignore-ssl-errors=yes", { port: 12345 }, function (ph) {
+    console.log("Phantom Bridge Initiated");
+    phantom_instance = ph;
+    ph.createPage(function(page){
+        console.log("Phantom page created");
+       phantom_page = page;
+    });
 });
 
 //setup the errors
@@ -44,17 +64,36 @@ server.error(function(err, req, res, next){
 server.listen( port);
 
 //Setup Socket.IO
-var io = io.listen(server);
-io.sockets.on('connection', function(socket){
-  console.log('Client Connected');
-  socket.on('message', function(data){
-    socket.broadcast.emit('server_message',data);
-    socket.emit('server_message',data);
-  });
-  socket.on('disconnect', function(){
-    console.log('Client Disconnected.');
-  });
-});
+var io = Io.listen(server);
+io.set('log level', 1);
+
+var sendErrorMessage = function(req, msg) {
+    io.sockets.emit('message', {type: 'error', msg: msg});
+};
+
+var sendInfoMessage = function(req, msg) {
+    io.sockets.emit('message', {type: 'info', msg: msg});
+};
+
+var printReceipt = function(req, order) {
+    var orderId = order._id.toHexString();
+    var url = 'http://localhost:' + port + '/receipts/' + orderId;
+    phantom_page.open(url, function (status) {
+        if (status == "success") {
+            console.log("Page is open!");
+            var filename = receiptDirectory + '/' + orderId + '.pdf';
+            phantom_page.render(filename, function(){
+                console.log('rendered ' + filename);
+                sendInfoMessage(req, 'Beleg bereit zum drucken');
+                phantom_page.close()
+            })
+        } else {
+            console.log('Error while opening ' + url + ': ' + status);
+            sendErrorMessage(req, 'Beleg konnte nicht erstellt werden: ' + JSON.stringify(status));
+        }
+    })
+};
+
 
 var withDb = function(callback) {
     MongoClient.connect('mongodb://127.0.0.1:27017/bistro', function(err, db) {
@@ -199,6 +238,7 @@ server.post('/orders', function(req,res){
         orders.insert(order, {w: 0}, function(err){
             db.close();
             if (err) throw err;
+            printReceipt(req, order);
             res.json({_id: order._id, no: order.no});
         });
 
@@ -216,6 +256,17 @@ server.delete('/orders/:id', function(req, res){
     });
 });
 
+server.get('/receipts/:id', function(req, res){
+   withCollection('orders', function(orders, db){
+       orders.findOne(getIdQuery(req.params.id), {}, function(err, doc){
+           db.close();
+           if (err) throw err;
+            res.render('receipt.ejs', {
+                locals: doc
+            });
+       });
+   });
+});
 
 
 //A Route for Creating a 500 Error (Useful to keep around)
