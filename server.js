@@ -56,12 +56,11 @@ server.error(function(err, req, res, next){
                   title : 'The Server Encountered an Error'
                  ,description: ''
                  ,author: ''
-                 ,analyticssiteid: 'XXXXXXX'
-                 ,error: err 
+                 ,error: err
                 },status: 500 });
     }
 });
-server.listen( port);
+server.listen(port);
 
 //Setup Socket.IO
 var io = Io.listen(server);
@@ -77,15 +76,14 @@ var sendInfoMessage = function(req, msg) {
 
 var printReceipt = function(req, order) {
     var orderId = order._id.toHexString();
-    var url = 'http://localhost:' + port + '/receipts/' + orderId;
+    var url = (req.connection.encrypted ? 'https' : 'http')+ '://' +  req.header('host') + '/receipts/' + orderId;
     phantom_page.open(url, function (status) {
         if (status == "success") {
-            console.log("Page is open!");
             var filename = receiptDirectory + '/' + orderId + '.pdf';
             phantom_page.render(filename, function(){
                 console.log('rendered ' + filename);
                 sendInfoMessage(req, 'Beleg bereit zum drucken');
-                phantom_page.close()
+                phantom_page.close();
             })
         } else {
             console.log('Error while opening ' + url + ': ' + status);
@@ -221,7 +219,7 @@ server.get('/orders', function(req, res){
     });
 });
 
-server.post('/orders', function(req,res){
+server.post('/orders', function(req, res){
     function removeUnsuedFieldsFromArticles(articles) {
         return _.map(articles, function(article){
             return _.pick(article, 'name', 'receipt', 'price', 'ordered', 'kitchen');
