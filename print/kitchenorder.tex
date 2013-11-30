@@ -1,0 +1,38 @@
+\documentclass[fontsize=16pt]{scrartcl}
+\renewcommand*{\familydefault}{\sfdefault}
+\usepackage[ngerman]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage[margin=1cm]{geometry}
+\begin{document} 
+\pagestyle{empty}
+\parskip2ex
+\fboxrule1mm
+\fboxsep3mm
+\newsavebox{\fmbox}
+\newenvironment{fmpage}[1]
+{\begin{lrbox}{\fmbox}\begin{minipage}{#1}}
+{\end{minipage}\end{lrbox}\fbox{\usebox{\fmbox}}}
+
+{\huge Bistro-Bestellung Nr. <%= order.no %>}
+\par
+vom <%= moment(order._id.getTimestamp()).format('DD.MM.YYYY HH:mm') %>
+\par
+<%
+ if (order.kitchenNotes && order.kitchenNotes.trim().length > 0) {
+    var notes = order.kitchenNotes.split('\n');
+%>
+\begin{fmpage}{0.5\linewidth}
+\large Hinweise für die Küche
+\begin{itemize}
+<% for (var i = 0; i < notes.length; i++) { %>\item <%= notes[i] %><% } %>
+\end{itemize}
+\end{fmpage}
+\par
+<% } %>
+
+\begin{itemize}\huge
+<% for(var i = 0; i < order.articles.length; i++) {
+    var article = order.articles[i]; %> \item[<%= article.ordered %>x]<%= article.name %><% } %>
+\end{itemize}
+\par
+\end{document}

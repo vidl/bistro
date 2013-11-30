@@ -6,10 +6,12 @@ var connect = require('connect')
     , MongoClient = require('mongodb').MongoClient
     , ObjectID = require('mongodb').ObjectID
     , _ = require('underscore')
-    , phantom = require('phantom')
     , fs = require('fs')
     , childProcess = require('child_process')
     , moment = require('moment')
+    , Q = require('q')
+    , ejs = require('ejs')
+
     ;
 
 
@@ -29,25 +31,13 @@ server.configure(function(){
 
 var pdfDirectory = 'pdfs';
 
+var receiptTemplate = ejs.compile(fs.readFileSync('print/receipt.tex').toString());
+var kitchenOrderTemplate = ejs.compile(fs.readFileSync('print/kitchenorder.tex').toString());
+
 if (!fs.existsSync(pdfDirectory)) {
     fs.mkdirSync(pdfDirectory);
 }
 
-var phantom_instance = null;
-var phantom_receipt_page = null;
-var phantom_order_page = null;
-phantom.create("--web-security=no", "--ignore-ssl-errors=yes", { port: 12345 }, function (ph) {
-    console.log("Phantom Bridge Initiated");
-    phantom_instance = ph;
-    ph.createPage(function(page){
-        console.log("Phantom receipt page created");
-       phantom_receipt_page = page;
-    });
-    ph.createPage(function(page){
-        console.log("Phantom order page created");
-        phantom_order_page = page;
-    });
-});
 
 //setup the errors
 server.error(function(err, req, res, next){
@@ -156,11 +146,30 @@ var printFile = function(req, printer, file, options) {
     args.push(file);
     childProcess.exec('lp ' + args.join(' '), function(error, stdout, stderr){
         if (error != null) {
-            var errorMsg = 'Fehler beim Drucken auf ' + settings.receiptPrinter + ': ' + stderr;
+            var errorMsg = 'Fehler beim Drucken auf ' + printer + ': ' + stderr;
             console.log(errorMsg);
             sendErrorMessage(req, errorMsg);
         }
     });
+};
+
+var createPdf = function(texFile, jobname) {
+    var deferred = Q.defer();
+    var args = [];
+    args.push('-output-directory');
+    args.push(pdfDirectory);
+    args.push('-jobname');
+    args.push(jobname);
+    args.push(texFile);
+
+    childProcess.exec('/usr/texbin/pdflatex ' + args.join(' '), function(error, stdout, stderr){
+        if (error != null) {
+            deferred.reject(error);
+        } else {
+            deferred.resolve(pdfDirectory + '/' + jobname + '.pdf');
+        }
+    });
+    return deferred.promise;
 };
 
 var printOnReceiptPrinter = function(req, file) {
@@ -187,52 +196,45 @@ var printReceipt = function(req, order) {
     var orderId = moment(order._id.getTimestamp()).format('YYYYMMDD-HHmmss');
     if (order.no)
         orderId += '-' + order.no;
-    var url = (req.connection.encrypted ? 'https' : 'http')+ '://' +  req.header('host') + '/receipts/' + order._id.toHexString();
-    phantom_receipt_page.open(url, function (status) {
-        if (status == "success") {
-            phantom_receipt_page.evaluate(function() {
-                return {
-                    width: 500, //document.getElementById("container").offsetWidth,
-                    height: document.getElementById("container").offsetHeight * 2
-                };
-            }, function(size) {
-                phantom_receipt_page.set('viewportSize', size, function(){
-                    var filename = pdfDirectory + '/' + orderId + '-receipt.pdf';
-                    phantom_receipt_page.render(filename, function(){
-                        //printOnReceiptPrinter(req, filename);
-                    });
-                });
-            });
-        } else {
-            console.log('Error while opening ' + url + ': ' + status);
-            sendErrorMessage(req, 'Beleg konnte nicht erstellt werden: ' + JSON.stringify(status));
+    var jobname = orderId + '-receipt';
+    var filenameTex = pdfDirectory + '/' + jobname + '.tex';
+
+    fs.writeFileSync(filenameTex, receiptTemplate({
+        order: order,
+        formatCurrency: function(amount) {
+            return (amount / 100).toFixed(2);
+        },
+        moment: moment
+    }));
+    createPdf(filenameTex, jobname).then(
+        function(pdf){
+            childProcess.exec('open ' + pdf);
+            printOnReceiptPrinter(req, pdf);
+        },
+        function(error) {
+            console.log('Error while creating PDF from ' + filenameTex + ': ' + error);
+            sendErrorMessage(req, 'Beleg konnte nicht erstellt werden: ' + JSON.stringify(error));
         }
-    })
+    );
 };
 
 var printKitchenOrder = function(req, order) {
     var orderId = moment(order._id.getTimestamp()).format('YYYYMMDD-HHmmss') + '-' + order.no;
-    var url = (req.connection.encrypted ? 'https' : 'http')+ '://' +  req.header('host') + '/kitchenorder/' + order._id.toHexString();
-    phantom_order_page.open(url, function (status) {
-        if (status == "success") {
-            phantom_order_page.evaluate(function() {
-                return {
-                    width: document.getElementById("container").offsetWidth,
-                    height: document.getElementById("container").offsetHeight * 2
-                };
-            }, function(size) {
-                phantom_order_page.set('viewportSize', size, function(){
-                    var filename = pdfDirectory + '/' + orderId + '-kitchenorder.pdf';
-                    phantom_order_page.render(filename, function(){
-                        printOnOrderPrinter(req, filename);
-                    });
-                });
-            });
-        } else {
-            console.log('Error while opening ' + url + ': ' + status);
-            sendErrorMessage(req, 'Küchen-Bestellung konnte nicht erstellt werden: ' + JSON.stringify(status));
+    var jobname = orderId + '-kitchenorder';
+    var filenameTex = pdfDirectory + '/' + jobname + '.tex';
+    fs.writeFileSync(filenameTex, kitchenOrderTemplate({
+        order: order,
+        moment: moment
+    }));
+    createPdf(filenameTex, jobname).then(
+        function(pdf){
+            printOnOrderPrinter(req, pdf);
+        },
+        function(error) {
+            console.log('Error while creating PDF from ' + filenameTex + ': ' + error);
+            sendErrorMessage(req, 'Küchen-Bestellung konnte nicht erstellt werden: ' + JSON.stringify(error));
         }
-    });
+    );
 };
 
 ///////////////////////////////////////////
@@ -362,36 +364,9 @@ server.get('/deleteorders', function(req, res){
 
 
 server.get('/receipts/:id', function(req, res){
-   withCollection('orders', function(orders, db){
-       orders.findOne(getIdQuery(req.params.id), {}, function(err, doc){
-           db.close();
-           if (err) throw err;
-            res.render('receipt.ejs', {
-                locals: {
-                    order: doc,
-                    formatCurrency: function(amount) {
-                        return (amount / 100).toFixed(2);
-                    },
-                    moment: moment
-                }
-            });
-       });
-   });
 });
 
 server.get('/kitchenorder/:id', function(req, res){
-    withCollection('orders', function(orders, db){
-        orders.findOne(getIdQuery(req.params.id), {}, function(err, doc){
-            db.close();
-            if (err) throw err;
-            res.render('kitchenorder.ejs', {
-                locals: {
-                    order: doc,
-                    moment: moment
-                }
-            });
-        });
-    });
 });
 
 server.get('/printers', function(req, res){
