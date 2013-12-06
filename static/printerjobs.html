@@ -1,0 +1,12 @@
+<div class="settings">
+    <div class="row-fluid">
+        <h2>Druckaufträge</h2>
+        <ul>
+            <li ng-repeat="job in queue">{{job}}</li>
+        </ul>
+        <div class="alert alert-info" ng-if="queue.length == 0">
+            <h4>Keine Aufträge</h4>
+            Aktuell gibt es keine Druckaufträge.
+        </div>
+    </div>
+</div>

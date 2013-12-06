@@ -12,29 +12,35 @@ var fs = require('fs')
     , moment = require('moment')
     , Q = require('q')
     , ejs = require('ejs')
+    , shellescape = require('shell-escape')
     ;
 
 module.exports = function(settings) {
 
     var pdfDirectory = settings.pdfDirectory || 'pdfs';
     var receiptTemplate = ejs.compile(fs.readFileSync(settings.receiptTemplate || 'print/receipt.tex').toString());
-    var kitchenOrderTemplate = ejs.compile(fs.readFileSync(settings.kitchenOrderTemplate || 'print/kitchenorder.tex').toString());
+    var orderTemplate = ejs.compile(fs.readFileSync(settings.orderTemplate || 'print/order.tex').toString());
     var getPrinterName = settings.getPrinterName;
+    var receiptPrinterSettingName = settings.receiptPrinterSettingName || 'receiptPrinter';
+    var orderPrinterSettingName = settings.orderPrinterSettingName || 'orderPrinter';
 
     if (!fs.existsSync(pdfDirectory)) {
         fs.mkdirSync(pdfDirectory);
     }
 
-    var printFile = function( printer, file, options) {
+    var printFile = function(printer, jobname, file, options) {
         var deferred = Q.defer();
         var args = [];
+        args.push('lp');
         args.push('-d');
         args.push(printer);
+        args.push('-t'); // job name
+        args.push(jobname);
         if (options) {
             args.push(options);
         }
         args.push(file);
-        childProcess.exec('lp ' + args.join(' '), function(error, stdout, stderr){
+        childProcess.exec(shellescape(args), function(error, stdout, stderr){
             if (error != null) {
                 var errorMsg = 'Fehler beim Drucken auf ' + printer + ': ' + stderr;
                 console.log(errorMsg);
@@ -48,20 +54,20 @@ module.exports = function(settings) {
     };
 
 
-    var printOnReceiptPrinter = function(file) {
+    var printOnReceiptPrinter = function(file, jobname) {
         var deferred = Q.defer();
-        getPrinterName('receiptPrinter', 'Kein Beleg-Drucker definiert').then(function(printerName){
-                return printFile(printerName, file);
+        getPrinterName(receiptPrinterSettingName, 'Kein Beleg-Drucker definiert').then(function(printerName){
+                return printFile(printerName, jobname, file);
         }, function(error){
             deferred.reject(error);
         });
         return deferred.promise;
     };
 
-    var printOnOrderPrinter = function(file) {
+    var printOnOrderPrinter = function(file, jobname) {
         var deferred = Q.defer();
-        getPrinterName('orderPrinter', 'Kein Bestell-Drucker definiert').then(function(printerName) {
-            return printFile(printerName, file, '-o media=a5 -o fit-to-page');
+        getPrinterName(orderPrinterSettingName, 'Kein Bestell-Drucker definiert').then(function(printerName) {
+            return printFile(printerName, jobname, file, '-o media=a5 -o fit-to-page');
         }, function(error){
             deferred.reject(error);
         });
@@ -91,13 +97,14 @@ module.exports = function(settings) {
     var createPdf = function(latexFile, jobname) {
         var deferred = Q.defer();
         var args = [];
+        args.push('/usr/texbin/pdflatex')
         args.push('-output-directory');
         args.push(pdfDirectory);
         args.push('-jobname');
         args.push(jobname);
         args.push(latexFile);
 
-        childProcess.exec('/usr/texbin/pdflatex ' + args.join(' '), function(error, stdout, stderr){
+        childProcess.exec(shellescape(args), function(error, stdout, stderr){
             if (error != null) {
                 deferred.reject(error);
             } else {
@@ -111,7 +118,7 @@ module.exports = function(settings) {
         var deferred = Q.defer();
         createPdf(printJob.latexFile, printJob.jobname).then(
             function (pdf) {
-                return printJob.printFunc(pdf);
+                return printJob.printFunc(pdf, printJob.jobname);
             },
             function (error) {
                 console.log('Error while creating PDF from ' + printJob.latexFile + ': ' + error);
@@ -133,14 +140,29 @@ module.exports = function(settings) {
         });
     };
 
+    var getQueue = function() {
+        var deferred = Q.defer();
+        childProcess.exec('lpq -a', function(error, stdout, stderr){
+            if (error != null) {
+                deferred.reject(error);
+            } else {
+                var queue = stdout.split('\n');
+                queue.shift(); // removes the first element (header)
+                queue.pop(); // remove the last (empty) element
+                deferred.resolve(queue);
+            }
+        });
+        return deferred.promise;
+    }
+
     return {
-        printKitchenOrder: function(order){
+        printOrder: function(order){
             return print({
                 order: order,
-                name: 'kitchenorder',
-                template: kitchenOrderTemplate,
+                name: 'order',
+                template: orderTemplate,
                 printFunc: printOnOrderPrinter,
-                errorName: 'Küchen-Bestellung'
+                errorName: 'Bestellung'
             });
         },
         printReceipt: function(order) {
@@ -152,6 +174,9 @@ module.exports = function(settings) {
                 errorName: 'Beleg'
             });
 
+        },
+        getQueue: function() {
+            return getQueue();
         }
     };
 

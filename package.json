@@ -12,7 +12,8 @@
     "ejs": "0.8.4",
     "underscore": "1.5.2",
     "q": "0.9.7",
-    "moment": "2.4.0"
+    "moment": "2.4.0",
+    "shell-escape": "0.0.1"
   },
   "devDependencies": {
     "vows": "0.5.x",

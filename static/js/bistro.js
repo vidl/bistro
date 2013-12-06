@@ -102,12 +102,27 @@ var socketIoFactory = function() {
     };
 };
 
+var printerJobsFactory = function($rootScope, socketIo) {
+    var queue = [];
+    socketIo.on('printerJobsChanged', $rootScope, function(data){
+        queue = data.queue;
+        $rootScope.$broadcast('printerJobsChanged');
+    });
+
+    return {
+        getQueue: function() {
+            return queue;
+        }
+    }
+};
+
 var configFactory = function ($routeProvider) {
     $routeProvider.
         when('/cashbox', {templateUrl: 'cashbox.html', controller: CashboxController}).
         when('/articles', {templateUrl: 'articles.html', controller: ArticlesController}).
         when('/orders', {templateUrl: 'orders.html', controller: OrdersController}).
         when('/settings', {templateUrl: 'settings.html', controller: SettingsController}).
+        when('/printerjobs', {templateUrl: 'printerjobs.html', controller: PrinterJobsController}).
         otherwise({redirectTo: '/cashbox'});
 };
 
@@ -116,19 +131,32 @@ angular.module('bistro', ['ui.bootstrap'])
     .filter('currency', currencyFilterFactory)
     .service('messageService', ['$rootScope', messageServiceFactory])
     .service('socketIo', ['$rootScope', socketIoFactory])
+    .service('printerjobsService', ['$rootScope', 'socketIo', printerJobsFactory])
     .directive('focus', ['$parse', '$timeout', focusDirectiveFactory])
     .directive('currency', ['$filter', currencyDiretiveFactory]);
 
-function NavController($scope, $location) {
+function NavController($scope, $location, printerjobsService) {
+
+    $scope.printJobs = { name: 'Druckaufträge', url: '/printerjobs', badge: 0};
+    $scope.printJobs.badge = printerjobsService.getQueue().length;
+
 
     $scope.menuItems = [
         { name: 'Kasse', url: '/cashbox'},
         { name: 'Artikel', url: '/articles'},
         { name: 'Bestellungen', url: '/orders'},
+        $scope.printJobs,
         { name: 'Einstellungen', url: '/settings'}
     ];
+
+
+    $scope.$on('printerJobsChanged', function(){
+        $scope.printJobs.badge = printerjobsService.getQueue().length;
+    });
 
     $scope.isActive = function(menuItem) {
       return $location.url() == menuItem.url;
     };
 }
+
+NavController.$inject = ['$scope', '$location', 'printerjobsService'];

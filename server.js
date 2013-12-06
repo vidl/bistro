@@ -53,7 +53,7 @@ server.listen(port);
 var io = Io.listen(server);
 io.set('log level', 1);
 
-var sendErrorMessage = function(req, msg) {
+var sendErrorMessage = function(msg) {
     io.sockets.emit('message', {type: 'error', msg: msg});
 };
 
@@ -149,10 +149,28 @@ var getPrinterName = function(printerName, errorMsg) {
 var printerService = print({
     pdfDirectory: 'pdfs',
     receiptTemplate: 'print/receipt.tex',
-    kitchenOrderTemplate: 'print/kitchenorder.tex',
+    orderTemplate: 'print/order.tex',
     getPrinterName: getPrinterName
 });
 
+io.sockets.on('connection', function (socket) {
+    printerService.getQueue().then(function(queue){
+        socket.emit('printerJobsChanged', {queue: queue});
+    });
+});
+
+var lastQueue = [];
+
+setInterval(function(){
+    printerService.getQueue().then(function(queue){
+        if (!_.isEqual(lastQueue, queue)) {
+            lastQueue = queue;
+            io.sockets.emit('printerJobsChanged', {queue: queue});
+        }
+    }, function(error){
+        sendErrorMessage(error);
+    });
+}, 1000);
 ///////////////////////////////////////////
 //              Routes                   //
 ///////////////////////////////////////////
@@ -248,13 +266,13 @@ server.post('/orders', function(req, res){
                 printerService.printReceipt(order).then(function(sucesss){
 
                 }, function(error){
-                    sendErrorMessage(req, error);
+                    sendErrorMessage(error);
                 });
                 if (order.kitchen) {
-                    printerService.printKitchenOrder(order).then(function(success){
+                    printerService.printOrder(order).then(function(success){
 
                     }, function(error){
-                        sendErrorMessage(req, error);
+                        sendErrorMessage(error);
                     });
                 }
                 res.json({_id: order._id, no: order.no});
@@ -300,6 +318,23 @@ server.get('/printers', function(req, res){
         res.json(printers);
     });
 });
+
+server.get('/printers/order', function(req, res){
+    printerService.getOrderQueue().then(function(queue){
+        res.json(queue);
+    }, function(error){
+        throw error;
+    });
+});
+
+server.get('/printers/receipt', function(req, res){
+    printerService.getReceiptQueue().then(function(queue){
+        res.json(queue);
+    }, function(error){
+        throw error;
+    });
+});
+
 
 server.get('/settings', function(req, res){
     getSettings().then(function(settings){

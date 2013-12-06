@@ -22,7 +22,10 @@
                     <a class="brand" href=".">Bistro Kasse</a>
                     <div class="nav-collapse collapse">
                         <ul class="nav" ng-controller="NavController">
-                            <li ng-class="{active: isActive(menuItem)}" ng-repeat="menuItem in menuItems"><a href="/#{{menuItem.url}}">{{menuItem.name}}</a></li>
+                            <li ng-class="{active: isActive(menuItem)}" ng-repeat="menuItem in menuItems">
+                                <a href="/#{{menuItem.url}}">{{menuItem.name}}
+                                    <span class="badge badge-important" ng-if="menuItem.badge > 0">{{menuItem.badge}}</span></a>
+                            </li>
                         </ul>
                     </div><!--/.nav-collapse -->
                 </div>
@@ -53,6 +56,7 @@
 <script src="/js/articles.js"></script>
 <script src="/js/orders.js"></script>
 <script src="/js/message.js"></script>
+<script src="/js/printerjobs.js"></script>
 <script src="/js/settings.js"></script>
 
 
