@@ -6,12 +6,11 @@ var connect = require('connect')
     , MongoClient = require('mongodb').MongoClient
     , ObjectID = require('mongodb').ObjectID
     , _ = require('underscore')
-    , fs = require('fs')
     , childProcess = require('child_process')
     , moment = require('moment')
     , Q = require('q')
     , ejs = require('ejs')
-
+    , print = require('./app/print.js');
     ;
 
 
@@ -28,15 +27,6 @@ server.configure(function(){
     server.use(server.router);
     //server.engine('html', require('ejs').renderFile);
 });
-
-var pdfDirectory = 'pdfs';
-
-var receiptTemplate = ejs.compile(fs.readFileSync('print/receipt.tex').toString());
-var kitchenOrderTemplate = ejs.compile(fs.readFileSync('print/kitchenorder.tex').toString());
-
-if (!fs.existsSync(pdfDirectory)) {
-    fs.mkdirSync(pdfDirectory);
-}
 
 
 //setup the errors
@@ -126,115 +116,42 @@ var withNextOrderNo = function(callback) {
 };
 
 
-var getSettings = function(callback) {
+var getSettings = function() {
+    var deferred = Q.defer();
     withCollection('settings', function(settings, db){
         settings.findOne({}, {}, function(err, doc){
             db.close();
-            if (err) throw err;
-            callback(doc || {});
+            if (err) {
+                deferred.reject(err);
+            } else {
+                deferred.resolve(doc || {});
+            }
         });
-    });
-};
-
-var printFile = function(req, printer, file, options) {
-    var args = [];
-    args.push('-d');
-    args.push(printer);
-    if (options) {
-        args.push(options);
-    }
-    args.push(file);
-    childProcess.exec('lp ' + args.join(' '), function(error, stdout, stderr){
-        if (error != null) {
-            var errorMsg = 'Fehler beim Drucken auf ' + printer + ': ' + stderr;
-            console.log(errorMsg);
-            sendErrorMessage(req, errorMsg);
-        }
-    });
-};
-
-var createPdf = function(texFile, jobname) {
-    var deferred = Q.defer();
-    var args = [];
-    args.push('-output-directory');
-    args.push(pdfDirectory);
-    args.push('-jobname');
-    args.push(jobname);
-    args.push(texFile);
-
-    childProcess.exec('/usr/texbin/pdflatex ' + args.join(' '), function(error, stdout, stderr){
-        if (error != null) {
-            deferred.reject(error);
-        } else {
-            deferred.resolve(pdfDirectory + '/' + jobname + '.pdf');
-        }
     });
     return deferred.promise;
 };
 
-var printOnReceiptPrinter = function(req, file) {
-    getSettings(function(settings){
-        if (settings.receiptPrinter) {
-            printFile(req, settings.receiptPrinter, file);
+
+var getPrinterName = function(printerName, errorMsg) {
+    var deferred = Q.defer();
+    getSettings().then(function(settings){
+        if (settings && settings[printerName]) {
+            deferred.resolve(settings[printerName]);
         } else {
-            sendErrorMessage(req, 'Kein Beleg-Drucker definiert');
+            deferred.reject(errorMsg);
         }
+    }, function(error) {
+        deferred.reject(error);
     });
+    return deferred.promise;
 };
 
-var printOnOrderPrinter = function(req, file) {
-    getSettings(function(settings){
-        if (settings.orderPrinter) {
-            printFile(req, settings.orderPrinter, file, '-o media=a5 -o fit-to-page');
-        } else {
-            sendErrorMessage(req, 'Kein Bestell-Drucker definiert');
-        }
-    });
-};
-
-var printReceipt = function(req, order) {
-    var orderId = moment(order._id.getTimestamp()).format('YYYYMMDD-HHmmss');
-    if (order.no)
-        orderId += '-' + order.no;
-    var jobname = orderId + '-receipt';
-    var filenameTex = pdfDirectory + '/' + jobname + '.tex';
-
-    fs.writeFileSync(filenameTex, receiptTemplate({
-        order: order,
-        formatCurrency: function(amount) {
-            return (amount / 100).toFixed(2);
-        },
-        moment: moment
-    }));
-    createPdf(filenameTex, jobname).then(
-        function(pdf){
-            printOnReceiptPrinter(req, pdf);
-        },
-        function(error) {
-            console.log('Error while creating PDF from ' + filenameTex + ': ' + error);
-            sendErrorMessage(req, 'Beleg konnte nicht erstellt werden: ' + JSON.stringify(error));
-        }
-    );
-};
-
-var printKitchenOrder = function(req, order) {
-    var orderId = moment(order._id.getTimestamp()).format('YYYYMMDD-HHmmss') + '-' + order.no;
-    var jobname = orderId + '-kitchenorder';
-    var filenameTex = pdfDirectory + '/' + jobname + '.tex';
-    fs.writeFileSync(filenameTex, kitchenOrderTemplate({
-        order: order,
-        moment: moment
-    }));
-    createPdf(filenameTex, jobname).then(
-        function(pdf){
-            printOnOrderPrinter(req, pdf);
-        },
-        function(error) {
-            console.log('Error while creating PDF from ' + filenameTex + ': ' + error);
-            sendErrorMessage(req, 'Küchen-Bestellung konnte nicht erstellt werden: ' + JSON.stringify(error));
-        }
-    );
-};
+var printerService = print({
+    pdfDirectory: 'pdfs',
+    receiptTemplate: 'print/receipt.tex',
+    kitchenOrderTemplate: 'print/kitchenorder.tex',
+    getPrinterName: getPrinterName
+});
 
 ///////////////////////////////////////////
 //              Routes                   //
@@ -328,9 +245,17 @@ server.post('/orders', function(req, res){
             orders.insert(order, {w: 1}, function(err){
                 db.close();
                 if (err) throw err;
-                printReceipt(req, order);
+                printerService.printReceipt(order).then(function(sucesss){
+
+                }, function(error){
+                    sendErrorMessage(req, error);
+                });
                 if (order.kitchen) {
-                    printKitchenOrder(req, order);
+                    printerService.printKitchenOrder(order).then(function(success){
+
+                    }, function(error){
+                        sendErrorMessage(req, error);
+                    });
                 }
                 res.json({_id: order._id, no: order.no});
             });
@@ -377,8 +302,10 @@ server.get('/printers', function(req, res){
 });
 
 server.get('/settings', function(req, res){
-    getSettings(function(settings){
+    getSettings().then(function(settings){
         res.json(settings);
+    }, function(err){
+        throw err;
     });
 });
 
