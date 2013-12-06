@@ -208,7 +208,6 @@ var printReceipt = function(req, order) {
     }));
     createPdf(filenameTex, jobname).then(
         function(pdf){
-            childProcess.exec('open ' + pdf);
             printOnReceiptPrinter(req, pdf);
         },
         function(error) {
