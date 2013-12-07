@@ -10,7 +10,8 @@ var connect = require('connect')
     , moment = require('moment')
     , Q = require('q')
     , ejs = require('ejs')
-    , print = require('./app/print.js');
+    , print = require('./app/print.js')
+    , bistro = require('./app/bistro.js')
     ;
 
 
@@ -61,89 +62,23 @@ var sendInfoMessage = function(req, msg) {
     io.sockets.emit('message', {type: 'info', msg: msg});
 };
 
-var withDb = function(callback) {
-    MongoClient.connect('mongodb://127.0.0.1:27017/bistro', function(err, db) {
-        if(err) throw err;
-        callback(db);
-    });
-};
-
-var withCollection = function(collection, callback) {
-  withDb(function(db){
-     callback(db.collection(collection), db);
-  });
-};
-
-var getIdQuery = function(id) {
-    return {_id: ObjectID(id)}
-};
-
-var fetchArticles = function(articles, callback) {
-    articles.find({}, {sort: {name: 1}}).toArray(function(err, docs){
-        if (err) throw err;
-        callback(docs);
-    });
-};
-
-
-// ATTENTION: assumes the there are no orders on days in future
-var withNextOrderNo = function(callback) {
-    withCollection('orders', function(orders, db){
-        // select only orders with order numbers
-        var query = {
-            no: { $gt: 0}
-        };
-
-        var sort = [
-            ['_id', -1], // first by id descending which means the most recent order
-            ['no', -1] // then by order number
-        ];
-
-        orders.find(query, {sort: sort, limit: 1}, function(err, cursor){
-            if (err) throw err;
-            cursor.nextObject(function(err, doc){
-                var orderNo = 1;
-                if (doc && moment().startOf('day').isBefore(moment(doc._id.getTimestamp()))) {
-                    console.log('Found an order today with a order.no: ' + doc.no);
-                    orderNo = doc.no + 1;
-                } else {
-                    console.log('No orders yet with an no, use 1');
-                }
-                callback(orders, db, orderNo);
-            });
-        });
-    });
-};
-
-
-var getSettings = function() {
-    var deferred = Q.defer();
-    withCollection('settings', function(settings, db){
-        settings.findOne({}, {}, function(err, doc){
-            db.close();
-            if (err) {
-                deferred.reject(err);
-            } else {
-                deferred.resolve(doc || {});
-            }
-        });
-    });
-    return deferred.promise;
-};
+var bistroService = bistro({
+    db: 'mongodb://127.0.0.1:27017/bistro'
+});
 
 
 var getPrinterName = function(printerName, errorMsg) {
-    var deferred = Q.defer();
-    getSettings().then(function(settings){
+    return bistroService.getSettings().then(function(settings){
+        var deferred = Q.defer();
         if (settings && settings[printerName]) {
             deferred.resolve(settings[printerName]);
         } else {
             deferred.reject(errorMsg);
         }
+        return deferred.promise;
     }, function(error) {
-        deferred.reject(error);
+        throw error; // rejects the promise
     });
-    return deferred.promise;
 };
 
 var printerService = print({
@@ -189,176 +124,110 @@ server.get('/', function(req,res){
   });*/
 });
 
-server.get('/articles', function(req, res){
-    withCollection('articles', function(articles, db){
-        fetchArticles(articles, function(docs){
-            res.json(docs);
-            db.close();
-        });
+var handleError = function(err, res) {
+    console.log(err.toString());
+    res.status(500).send(err.toString());
+};
+
+var returnArticles = function(res, callback) {
+    bistroService.getArticles().then(function (articles) {
+        if (callback) {
+            callback(articles);
+        } else {
+            res.json(articles);
+        }
+    }, function (err) {
+        handleError(err, res);
     });
+};
+
+server.get('/articles', function(req, res){
+    returnArticles(res);
 });
 
 server.delete('/articles/:id', function(req, res){
-    withCollection('articles', function(articles, db){
-        articles.remove(getIdQuery(req.params.id), {w: 1}, function(err){
-            if (err) throw err;
-            fetchArticles(articles, function(docs){
-                res.json(docs);
-                db.close();
-            });
-        });
+    bistroService.removeArticle(req.params.id).then(function(){
+        returnArticles(res);
+    }, function(err){
+        handleError(err, res);
     });
 });
 
 server.post('/articles', function(req, res){
-    withCollection('articles', function(articles, db){
-        var insertOrUpdateHandler = function (err, result) {
-            if (err) throw err;
-            fetchArticles(articles, function (docs) {
-                res.json({saved: req.body, articles: docs});
-                db.close();
-            });
-        };
-
-        if (req.body._id) {
-            var id = req.body._id;
-            req.body._id = ObjectID(req.body._id);
-            articles.update(getIdQuery(id), req.body, {w: 1}, insertOrUpdateHandler);
-        } else {
-            articles.insert(req.body, {w: 1}, insertOrUpdateHandler);
-        }
+    bistroService.saveArticle(req.body).then(function(){
+        returnArticles(res, function(articles){
+            res.json({saved: req.body, articles: articles});
+        });
+    }, function(err){
+        handleError(err, res);
     });
 });
 
 server.get('/orders', function(req, res){
-    withCollection('orders', function(orders, db){
-        orders.find({}, {sort: {_id: -1}}).toArray(function(err, docs){
-            if (err) throw err;
-            _.each(docs, function(order){
-               order.ts = order._id.getTimestamp();
-            });
-            res.json(docs);
-            db.close();
+    bistroService.getOrders().then(function(orders){
+        _.each(orders, function(order){
+            order.ts = order._id.getTimestamp();
         });
+
+        var beginOfToday = moment().startOf('day');
+        res.json(_.filter(orders, function(order){
+            return moment(order.ts).isAfter(beginOfToday);
+        }));
+    }, function(err){
+        handleError(err, res);
     });
 });
 
 server.post('/orders', function(req, res){
-    function removeUnsuedFieldsFromArticles(articles) {
-        return _.map(articles, function(article){
-            return _.pick(article, 'name', 'receipt', 'price', 'ordered', 'kitchen');
-        });
-    }
-    var order = req.body;
-    order.kitchen = _.findWhere(order.articles, {kitchen: true}) != undefined;
-    withNextOrderNo(function(orders, db, nextOrderNo){
-        var articleIds = _.map(order.articles, function(article) { return ObjectID(article._id); });
-        db.collection('articles').update({_id: {$in: articleIds}, available: {$gt: 0}}, {$inc:{ available: -1}}, {w: 1, multi: true}, function(err, result){
-            if (err) throw err;
-            if (order.kitchen) {
-                console.log('Next order no is ' + nextOrderNo);
-                order.no = nextOrderNo;
-            }
-            order.articles = removeUnsuedFieldsFromArticles(order.articles);
-            orders.insert(order, {w: 1}, function(err){
-                db.close();
-                if (err) throw err;
-                printerService.printReceipt(order).then(function(sucesss){
-
-                }, function(error){
-                    sendErrorMessage(error);
-                });
-                if (order.kitchen) {
-                    printerService.printOrder(order).then(function(success){
-
-                    }, function(error){
-                        sendErrorMessage(error);
-                    });
-                }
-                res.json({_id: order._id, no: order.no});
-            });
-
-        });
-
+    bistroService.insertOrder(req.body).then(function(order){
+        printerService.printReceipt(order).fail(function(error){ sendErrorMessage(error); });
+        if (order.kitchen) {
+            printerService.printOrder(order).fail(function(error){ sendErrorMessage(error); });
+        }
+        res.json({_id: order._id, no: order.no});
+    }, function(err){
+        handleError(err, res);
     });
-
 });
 
 server.delete('/orders/:id', function(req, res){
-    withCollection('orders', function(orders, db){
-        orders.remove(getIdQuery(req.params.id), {w: 1}, function(err){
-            db.close();
-            if (err) throw err;
-            res.send('done');
-        });
+    bistroService.removeOrder(req.params.id).then(function(){
+        res.send('done');
+    }, function(err){
+        handleError(err, res);
     });
 });
 
 server.get('/deleteorders', function(req, res){
-    withCollection('orders', function(orders, db){
-        orders.remove({}, {w: 1}, function(err){
-            db.close();
-            if (err) throw err;
-            res.send('done');
-        });
+    bistroService.removeAllOrders().then(function(){
+        res.send('done');
+    }, function(err){
+        handleError(err, res);
     });
-});
-
-
-server.get('/receipts/:id', function(req, res){
-});
-
-server.get('/kitchenorder/:id', function(req, res){
 });
 
 server.get('/printers', function(req, res){
     childProcess.exec('lpstat -a | cut -d " " -f 1', function(error, stdout, stderr) {
         var printers = stdout.split(/\n/);
-        printers.splice(printers.length - 1 , 1); // remove the last (empty) item
+        printers.pop(); // remove the last (empty) item
         res.json(printers);
-    });
-});
-
-server.get('/printers/order', function(req, res){
-    printerService.getOrderQueue().then(function(queue){
-        res.json(queue);
-    }, function(error){
-        throw error;
-    });
-});
-
-server.get('/printers/receipt', function(req, res){
-    printerService.getReceiptQueue().then(function(queue){
-        res.json(queue);
-    }, function(error){
-        throw error;
     });
 });
 
 
 server.get('/settings', function(req, res){
-    getSettings().then(function(settings){
+    bistroService.getSettings().then(function(settings){
         res.json(settings);
     }, function(err){
-        throw err;
+        handleError(err, res);
     });
 });
 
 server.post('/settings', function(req, res){
-    withCollection('settings', function(settings, db){
-        var insertOrUpdateHandler = function(err, result) {
-            if (err) throw err;
-            db.close();
-            res.send('done');
-        };
-        if (req.body._id) {
-            var id = req.body._id;
-            req.body._id = ObjectID(req.body._id);
-            settings.update(getIdQuery(id), req.body, {w: 1}, insertOrUpdateHandler);
-        } else {
-          settings.insert(req.body, {w: 1}, insertOrUpdateHandler);
-        }
-
+    bistroService.saveSettings(req.body).then(function(){
+        res.send('done');
+    }, function(err){
+        handleError(err, res);
     });
 });
 
