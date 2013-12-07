@@ -82,10 +82,10 @@ module.exports = function(settings) {
                 resolveOrReject(deferred, err, 'Fehler beim Bestimmen der nächsten Bestellnummer', function(){
                     var orderNo = 1;
                     if (doc && moment().startOf('day').isBefore(moment(doc._id.getTimestamp()))) {
-                        console.log('Found an order today with a order.no: ' + doc.no);
+                        //console.log('Found an order today with a order.no: ' + doc.no);
                         orderNo = doc.no + 1;
                     } else {
-                        console.log('No orders yet with an no, use 1');
+                        //console.log('No orders yet with an no, use 1');
                     }
                     ctx.orderNo = orderNo;
                     return ctx;
