@@ -1,14 +1,18 @@
 <div class="row-fluid articles">
     <div class="span3">
         <div class="well sidebar-nav">
-            <ul class="nav nav-list">
-                <li ng-repeat="article in articles" ng-class="{active: selectedId == article._id}">
-                    <a href="" ng-click="selectArticle(article)" class="clearfix">
-                        <div class="pull-left" ng-class="{inactive: article.active == undefined || !article.active}">{{article.name}} <i ng-show="article.kitchen" class="icon-fire"></i></div>
-                        <div class="pull-right"><span class="badge" ng-show="{{article.available >= 0}}">{{article.available}}</span></div>
+            <ul class="nav nav-list" ng-repeat="articleGroup in articlesGrouped">
+                    <li class="nav-header">{{articleGroup.group}}</li>
+                    <li ng-repeat="article in articleGroup.articles" ng-class="{active: selectedId == article._id}">
+                        <a href="" ng-click="selectArticle(article)" class="clearfix">
+                            <div class="pull-left" ng-class="{inactive: article.active == undefined || !article.active}">{{article.name}} <i ng-show="article.kitchen" class="icon-fire"></i></div>
+                            <div class="pull-right"><span class="badge" ng-show="{{article.available >= 0}}">{{article.available}}</span></div>
 
-                    </a>
-                </li>
+                        </a>
+                    </li>
+            </ul>
+            <ul class="nav nav-list">
+                <li class="nav-header">Weitere Funktionen</li>
                 <li><a href="" ng-click="addArticle()"><em>neuer Artikel</em></a></li>
             </ul>
         </div>

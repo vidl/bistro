@@ -1,5 +1,6 @@
 function ArticlesController($scope, $http) {
     $scope.articles = [];
+    $scope.articlesGrouped = [];
 
     var findIndexByArticleId = function(id) {
         var index = undefined;
@@ -10,8 +11,20 @@ function ArticlesController($scope, $http) {
         }
     };
 
+    var setArticles = function(articles) {
+        $scope.articles = articles;
+        var grouped = _.groupBy(articles, 'group');
+        var groups = _.keys(grouped).sort();
+        $scope.articlesGrouped = [];
+        angular.forEach(groups, function(group){
+            var groupArticles = _.sortBy(grouped[group], 'name');
+            group = group === 'undefined' ? 'ohne Gruppe' : group;
+            $scope.articlesGrouped.push({group: group, articles: groupArticles});
+        });
+    }
+
     $http.get('/articles').success(function(data){
-        $scope.articles = data;
+        setArticles(data);
         if (data.length)
             $scope.selectArticle(data[0]);
     });
@@ -28,7 +41,7 @@ function ArticlesController($scope, $http) {
 
     $scope.$on('updateArticle', function(event, data){
         $scope.selectedId = data.saved._id;
-        $scope.articles = data.articles;
+        setArticles(data.articles);
     });
 
     $scope.$on('removeArticle', function(event, id){
