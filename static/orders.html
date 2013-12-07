@@ -1,7 +1,8 @@
 <div class="row-fluid orders">
-    <div class="span3">
+    <div class="span3 no-print">
         <div class="well sidebar-nav">
             <ul class="nav nav-list">
+                <li ng-class="{active: selectedOrder == undefined}"><a href="" ng-click="select(undefined)">Übersicht</a></li>
                 <li ng-repeat="order in orders" ng-class="{active: isSelected(order)}">
                     <a href="" ng-click="select(order)" class="clearfix" >
                         <div class="pull-left">{{ order.ts | date:'HH:mm'}}<span ng-show="order.no">, Nr. {{ order.no }}</span></div>
@@ -14,15 +15,56 @@
             </ul>
         </div>
     </div>
+    <div class="span9" ng-hide="selectedOrder">
+        <h4>Finanzen</h4>
+        <table class="table table-striped table-width-auto">
+            <tr>
+                <td><strong>Einnahmen</strong></td>
+                <td ng-repeat="(currency, amount) in total.cash track by $id(currency)" class="text-right">{{amount | currency:currency }}</td>
+            </tr>
+            <tr>
+                <td><strong>Gutscheine</strong> ({{total.voucher.count}})</td>
+                <td class="text-right">{{total.voucher.amount | currency:total.voucher.currency }}</td>
+                <td class="text-right">-</td>
+            </tr>
+            <tr>
+                <td><strong>Absatz</strong></td>
+                <td ng-repeat="(currency, amount) in total.volume track by $id(currency)" class="text-right">{{amount | currency:currency }}</td>
+            </tr>
+        </table>
+        <h4>Statistik</h4>
+        <table class="table table-striped table-width-auto">
+            <tr><th class="text-left">Artikel</th><th>Anzahl</th></tr>
+            <tr ng-repeat="(name, count) in total.articleCounts track by $id(name)">
+                <td>{{name}}</td><td class="text-right">{{count}}</td>
+            </tr>
+            <tr>
+                <td>Bestellungen Küche<i class="icon-fire"></i></td><td class="text-right">{{total.kitchenOrderCount}}</td>
+            </tr>
+            <tr>
+            <td>Bestellungen Total</td><td class="text-right">{{total.orderCount}}</td>
+            </tr>
+        </table>
+
+    </div>
     <div class="span9" ng-show="selectedOrder">
         <h4>Bestellung vom {{selectedOrder.ts | date:'dd.MM.yyyy HH:mm'}}</h4>
         <p ng-show="selectedOrder.no">Bestellnummer: {{selectedOrder.no}}</p>
         <p>Gutschein: {{selectedOrder.voucher ? 'ja' : 'nein'}}</p>
         <p ng-show="selectedOrder.kitchenNotes">Hinweise für die Küche: <em>{{selectedOrder.kitchenNotes}}</em></p>
-        <table class="table table-striped table-condensed">
+        <table class="table table-striped table-condensed table-width-auto">
+            <tr><td>Artikel</td><td>Bestellmenge</td><td>Einzelpreis</td><td>Total</td></tr>
             <tr ng-repeat="article in selectedOrder.articles">
+                <td>{{article.name}}</td>
                 <td class="text-right">{{article.ordered}}x</td>
-                <td class="text-left">{{article.name}}</td>
+                <td class="text-right">{{article.price[selectedOrder.currency] | currency:selectedOrder.currency}}</td>
+                <td class="text-right">{{article.price[selectedOrder.currency] * article.ordered | currency:selectedOrder.currency}}</td>
+            </tr>
+            <tr>
+                <td><strong>Total</strong></td>
+                <td></td>
+                <td></td>
+                <td><strong>{{selectedOrder.total | currency:selectedOrder.currency}}</strong></td>
             </tr>
         </table>
         <div class="form-inline">

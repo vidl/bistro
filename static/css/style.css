@@ -40,12 +40,22 @@ body {
     }
 }
 
+@media print {
+    .no-print, .no-print * {
+        display: none !important;
+    }
+}
+
 .show-on-hover {
     visibility: hidden;
 }
 
 .table-large td {
     font-size: 18px;
+}
+
+.table-width-auto {
+    width: auto;
 }
 
 .show-on-hover-hook:hover .show-on-hover {
