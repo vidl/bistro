@@ -6,7 +6,6 @@ var connect = require('connect')
     , MongoClient = require('mongodb').MongoClient
     , ObjectID = require('mongodb').ObjectID
     , _ = require('underscore')
-    , childProcess = require('child_process')
     , moment = require('moment')
     , Q = require('q')
     , ejs = require('ejs')
@@ -207,10 +206,10 @@ server.get('/deleteorders', function(req, res){
 });
 
 server.get('/printers', function(req, res){
-    childProcess.exec('lpstat -a | cut -d " " -f 1', function(error, stdout, stderr) {
-        var printers = stdout.split(/\n/);
-        printers.pop(); // remove the last (empty) item
+    printerService.getPrinters().then(function(printers){
         res.json(printers);
+    }, function(err){
+        handleError(err, res);
     });
 });
 

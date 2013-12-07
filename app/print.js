@@ -153,7 +153,21 @@ module.exports = function(settings) {
             }
         });
         return deferred.promise;
-    }
+    };
+
+    var getPrinters = function() {
+        var deferred = Q.defer();
+        childProcess.exec('lpstat -a | cut -d " " -f 1', function(error, stdout, stderr) {
+            if (error != null) {
+                deferred.reject(error);
+            } else {
+                var printers = stdout.split(/\n/);
+                printers.pop(); // remove the last (empty) item
+                deferred.resolve(printers);
+            }
+        });
+        return deferred.promise;
+    };
 
     return {
         printOrder: function(order){
@@ -175,9 +189,8 @@ module.exports = function(settings) {
             });
 
         },
-        getQueue: function() {
-            return getQueue();
-        }
+        getQueue: getQueue,
+        getPrinters: getPrinters
     };
 
 };
