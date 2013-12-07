@@ -5,6 +5,7 @@ function CashboxController($scope, $http, messageService) {
     $scope.articles = [];
 
     $scope.total = { chf: 0, eur: 0};
+    $scope.voucherCurrency = 'chf';
 
     var clearOrder = function() {
         angular.forEach($scope.articles, function(article){
@@ -22,7 +23,7 @@ function CashboxController($scope, $http, messageService) {
 
 
     var resetGiven = function() {
-        $scope.lastOrderAmount = undefined;
+        $scope.lastOrder = undefined;
         $scope.given = '';
     };
 
@@ -54,18 +55,23 @@ function CashboxController($scope, $http, messageService) {
         return articles;
     };
 
-    $scope.order = function(currency) {
+    $scope.order = function(currency, voucher) {
+        voucher = voucher || false;
         $http.post('/orders', {
             articles: getOrderedArticles(),
             currency: currency,
             total: $scope.total[currency],
+            voucher: voucher,
             kitchenNotes: $scope.kitchenNotes
         }).success(function(data){
             if (data.no) {
                 messageService.info('Bestellung ' + data.no + ' erfolgreich abgeschickt');
             }
-            $scope.lastOrderAmount = $scope.total[currency];
-            $scope.lastOrderCurrency = currency;
+            $scope.lastOrder = {
+                amount: $scope.total[currency],
+                currency: currency,
+                voucher: voucher
+            };
             $scope.kitchenNotes = undefined;
             clearOrder();
         });

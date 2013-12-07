@@ -1,23 +1,23 @@
 <div class="row-fluid cashbox">
     <div class="span3">
         <div class="well">
-            <table class="table table-condensed" ng-show="lastOrderAmount">
+            <table class="table table-condensed" ng-show="lastOrder && !lastOrder.voucher">
                 <tr>
-                    <td><span class="badge">{{lastOrderAmount | currency:lastOrderCurrency}}</span></td>
+                    <td><span class="badge">{{lastOrder.amount | currency:lastOrder.currency}}</span></td>
                     <td>letzte Bestellung</td>
                 </tr>
                 <tr>
                     <td>
                         <div class="input-append">
-                            <input class="text-right input-mini" type="text" placeholder="Erhalten" ng-model="given" focus="lastOrderAmount">
-                            <span class="add-on">{{lastOrderCurrency.toUpperCase()}}</span>
+                            <input class="text-right input-mini" type="text" placeholder="Erhalten" ng-model="given" focus="lastOrder">
+                            <span class="add-on">{{lastOrder.currency.toUpperCase()}}</span>
                         </div>
                     </td>
                     <td>erhalten</td>
                 </tr>
                 <tr>
                     <td>
-                        <span class="badge">{{((given | currency) - lastOrderAmount) | currency:lastOrderCurrency}}</span>
+                        <span class="badge">{{((given | currency) - lastOrder.amount) | currency:lastOrder.currency}}</span>
                     </td>
                     <td>zurück</td>
                 </tr>
@@ -28,13 +28,16 @@
                     <td ng-click="remove(article)" class="text-left">{{article.name}}<i class="icon-minus-sign pull-right show-on-hover"></i></td>
                 </tr>
             </table>
-            <div class="clearfix">
-                <div ng-repeat="(currency, amount) in total track by $id(currency)"  ng-class-odd="'pull-left'" ng-class-even="'pull-right'">
-                    <a class="btn" ng-class="{disabled: amount == 0, 'btn-primary': amount > 0}" ng-click="order(currency)">{{amount | currency:currency }}</a>
-                </div>
+            <div>
+                <span ng-repeat="(currency, amount) in total track by $id(currency)"  ng-class-odd="'pull-left'" ng-class-even="'pull-right'">
+                    <a  class="btn" ng-class="{disabled: amount == 0, 'btn-primary': amount > 0}" ng-click="order(currency)">{{amount | currency:currency }}</a>
+                </span>
             </div>
-            <div>&nbsp;</div>
-            <textarea placeholder="Hinweise für die Küche" rows="5" ng-model="kitchenNotes"></textarea>
+            <p class="clearfix"></p>
+            <p>
+                <a class="btn btn-block" ng-class="{disabled: total[voucherCurrency] == 0, 'btn-info': total[voucherCurrency] > 0}" ng-click="order(voucherCurrency, true)">Gutschein</a>
+            </p>
+            <textarea placeholder="Hinweise für die Küche" class="input-block-level" rows="5" ng-model="kitchenNotes"></textarea>
         </div><!--/.well -->
     </div><!--/span-->
 
