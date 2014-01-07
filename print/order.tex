@@ -32,7 +32,7 @@ vom <%= moment(order._id.getTimestamp()).format('DD.MM.YYYY HH:mm') %>
 
 \begin{itemize}\huge
 <% for(var i = 0; i < order.articles.length; i++) {
-    var article = order.articles[i]; %> \item[<%= article.ordered %>x]<%= article.name %><% } %>
+    var article = order.articles[i]; if (article.kitchen){ %> \item[<%= article.ordered %>x]<%= article.name %><% }} %>
 \end{itemize}
 \par
 \end{document}
