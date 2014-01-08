@@ -41,8 +41,9 @@
         </div>
     </div><!--/span-->
 
-    <div class="span9">
-        <a class="btn btn-large article" ng-class="{disabled: !isAvailable(article)}" ng-repeat="article in articles | filter:{active: true} | orderBy:'group'" ng-click="add(article)" ng-show="isGroupSelected(article.group)">
+    <div class="span9" ng-repeat="(group,articleGroup) in articlesGrouped" ng-show="isGroupSelected(group)">
+
+        <a class="btn btn-large article" ng-class="{disabled: !isAvailable(article)}" ng-repeat="article in articleGroup | filter:{active: true}" ng-click="add(article)">
             <div class="top left right" ng-show="article.available > -1">Verf: <span class="available badge">{{article.available}}</span></div>
             <div class="bottom muted" ng-repeat="(currency, amount) in article.price track by $id(currency)"  ng-class-odd="'left'" ng-class-even="'right'">
                 {{amount | currency:currency}}

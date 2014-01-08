@@ -20,6 +20,7 @@ function CashboxController($scope, $http, messageService) {
 
     $http.get('/articles').success(function(data){
         $scope.articles = data;
+        $scope.articlesGrouped = _.groupBy(data, 'group');
         $scope.articleGroups = _.uniq(_.pluck(data, 'group').sort(), true);
         $scope.selectedGroups = $scope.articleGroups.slice(0);
         clearOrder();
