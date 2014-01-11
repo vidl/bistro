@@ -5,6 +5,7 @@ function CashboxController($scope, $http, messageService) {
     $scope.articles = [];
     $scope.articleGroups = [];
     $scope.selectedGroups = [];
+    $scope.limits = {};
 
     $scope.total = { chf: 0, eur: 0};
     $scope.voucherCurrency = 'chf';
@@ -26,17 +27,27 @@ function CashboxController($scope, $http, messageService) {
         clearOrder();
     });
 
+    $http.get('/limits').success(function(data){
+       $scope.limits = _.indexBy(data, '_id');
+    });
 
     var resetGiven = function() {
         $scope.lastOrder = undefined;
         $scope.given = '';
     };
 
+    var updateLimit = function(article, amount) {
+        if ($scope.hasLimit(article)) {
+            var limit = $scope.getLimit(article);
+            limit.available += amount;
+        }
+    };
+
     $scope.add = function(article) {
         if ($scope.isAvailable(article)) {
             resetGiven();
             article.ordered++;
-            article.available--;
+            updateLimit(article, -1);
             $scope.total.chf += article.price.chf;
             $scope.total.eur += article.price.eur;
         }
@@ -45,7 +56,7 @@ function CashboxController($scope, $http, messageService) {
     $scope.remove = function(article) {
         resetGiven();
         article.ordered--;
-        article.available++;
+        updateLimit(article, +1);
         $scope.total.chf -= article.price.chf;
         $scope.total.eur -= article.price.eur;
     };
@@ -86,8 +97,16 @@ function CashboxController($scope, $http, messageService) {
         return article.ordered > 0;
     };
 
+    $scope.getLimit = function(article) {
+        return $scope.limits[article.limit];
+    };
+
+    $scope.hasLimit = function(article) {
+        return article.limit && article.limit.length && $scope.limits[article.limit];
+    };
+
     $scope.isAvailable = function(article) {
-        return article.available != 0;
+        return !$scope.hasLimit(article) || $scope.getLimit(article).available > 0;
     };
 
     $scope.isGroupSelected = function(group) {

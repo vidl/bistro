@@ -59,7 +59,7 @@ module.exports = function(settings) {
     var findAsArray = function(collectionName, query, options) {
         return getCollection(collectionName).then(function(ctx){
             var deferred = Q.defer();
-            ctx.collection.find({}, options).toArray(function(err, docs){
+            ctx.collection.find(query, options).toArray(function(err, docs){
                 ctx.docs = docs;
                 resolveOrReject(deferred, err, 'Fehler bei der Abfrage von ' + collectionName, ctx);
             });
@@ -154,14 +154,24 @@ module.exports = function(settings) {
     };
 
     var updateAvailability = function(order) {
-        var articleIds = _.map(order.articles, function(article) { return ObjectID(article._id); });
-        return getCollection('articles').then(function(ctx){
-            var deferred = Q.defer();
-            ctx.collection.update({_id: {$in: articleIds}, available: {$gt: 0}}, {$inc:{ available: -1}}, {w: 1, multi: true}, function(err, result){
-                resolveOrReject(deferred, err, 'Fehler beim Aktualisieren der Verfügbarkeiten', result);
+        var limitIds = _.map(order.articles, function(article) { return ObjectID(article.limit); });
+        return findAsArray("limits", {_id: {$in: limitIds}}, {}).then(function(ctx){
+            var promises = [];
+            _.each(ctx.docs, function(limit){
+                var limitId = limit._id.toHexString();
+                var ordered = _.reduce(order.articles, function(ordered, article){
+                    return ordered + (article.limit == limitId ? article.ordered : 0);
+                }, 0);
+                if (ordered > 0) {
+                    var deferred = Q.defer();
+                    promises.push(deferred.promise);
+                    limit.available -= ordered;
+                    ctx.collection.save(limit, {w:1}, function(err, result){
+                        resolveOrReject(deferred, err, 'Fehler beim Aktualisieren der Limite ' + limit.name);
+                    });
+                }
             });
-            deferred.promise.finally(function(){ ctx.db.close(); });
-            return deferred.promise;
+            return Q.all(promises);
         });
     };
 
