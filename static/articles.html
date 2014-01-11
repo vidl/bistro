@@ -74,5 +74,11 @@
             <button type="submit" class="btn" ng-class="{'btn-danger': form.$invalid, 'btn-primary': !form.$invalid}" ng-disabled="form.$invalid || isUnchanged()" ng-click="save()">Speichern</button>
             <button class="btn btn-inverse delete" ng-click="remove()">L&ouml;schen</button>
         </form>
+        <div ng-if="limit._id">
+            <p>Verwendet in folgenden Artikeln</p>
+            <ul>
+                <li ng-repeat="article in articles" ng-show="article.limit == limit._id"><a href="" ng-click="selectArticle(article)">{{article.name}}</a></li>
+            </ul>
+        </div>
     </div>
 </div>
