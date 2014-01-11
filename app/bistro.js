@@ -189,6 +189,18 @@ module.exports = function(settings) {
         });
     };
 
+
+    var removeLimitFromArticles = function(id) {
+        return getCollection('articles').then(function(ctx){
+            var deferred = Q.defer();
+            ctx.collection.update({limit: id}, {$unset:{ limit: ''}}, {w: 1, multi: true}, function(err, result){
+                resolveOrReject(deferred, err, 'Fehler beim Entfernen der Limite von Artikeln', result);
+            });
+            deferred.promise.finally(function(){ ctx.db.close(); });
+            return deferred.promise;
+        });
+    };
+
     return {
         getSettings: function() {
             return getCollection('settings').then(function(ctx){
@@ -211,6 +223,18 @@ module.exports = function(settings) {
         },
         saveArticle: function(article) {
             return insertOrUpdateDoc('articles', article);
+        },
+
+        getLimits: function() {
+            return getAllDocsAsArray('limits', {sort: {name: 1}});
+        },
+        removeLimit: function(id){
+            return removeLimitFromArticles(id).then(function(){
+                return removeDoc('limits', id);
+            });
+        },
+        saveLimit: function(limit) {
+            return insertOrUpdateDoc('limits', limit);
         },
 
         getOrders: function() {

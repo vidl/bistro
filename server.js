@@ -162,6 +162,41 @@ server.post('/articles', function(req, res){
     });
 });
 
+
+var returnLimits = function(res, callback) {
+    bistroService.getLimits().then(function (limits) {
+        if (callback) {
+            callback(limits);
+        } else {
+            res.json(limits);
+        }
+    }, function (err) {
+        handleError(err, res);
+    });
+};
+
+server.get('/limits', function(req, res){
+    returnLimits(res);
+});
+
+server.delete('/limits/:id', function(req, res){
+    bistroService.removeLimit(req.params.id).then(function(){
+        returnLimits(res);
+    }, function(err){
+        handleError(err, res);
+    });
+});
+
+server.post('/limits', function(req, res){
+    bistroService.saveLimit(req.body).then(function(){
+        returnLimits(res, function(limits){
+            res.json({saved: req.body, limits: limits});
+        });
+    }, function(err){
+        handleError(err, res);
+    });
+});
+
 server.get('/orders', function(req, res){
     bistroService.getOrders().then(function(orders){
         _.each(orders, function(order){

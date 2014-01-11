@@ -6,7 +6,7 @@
                     <li ng-repeat="article in articleGroup.articles" ng-class="{active: selectedId == article._id}">
                         <a href="" ng-click="selectArticle(article)" class="clearfix">
                             <div class="pull-left" ng-class="{inactive: article.active == undefined || !article.active}">{{article.name}} <i ng-show="article.kitchen" class="icon-fire"></i></div>
-                            <div class="pull-right"><span class="badge" ng-show="{{article.available >= 0}}">{{article.available}}</span></div>
+                            <div class="pull-right"><span class="badge" ng-show="{{article.limit.length}}" title="{{getLimit(article.limit).name}}">{{getLimit(article.limit).available}}</span></div>
 
                         </a>
                     </li>
@@ -14,6 +14,18 @@
             <ul class="nav nav-list">
                 <li class="nav-header">Weitere Funktionen</li>
                 <li><a href="" ng-click="addArticle()"><em>neuer Artikel</em></a></li>
+            </ul>
+        </div>
+        <div class="well sidebar-nav">
+            <ul class="nav nav-list">
+                <li class="nav-header">Limitierte Anzahl</li>
+                <li ng-repeat="limit in limits" ng-class="{active: selectedId == limit._id}">
+                    <a href="" ng-click="selectLimit(limit)" class="clearfix">
+                        <div class="pull-left">{{limit.name}}</div>
+                        <div class="pull-right"><span class="badge">{{limit.available}}</span></div>
+                    </a>
+                </li>
+                <li><a href="" ng-click="addLimit()"><em>neue Limitierung</em></a></li>
             </ul>
         </div>
     </div>
@@ -34,7 +46,10 @@
                     <span class="add-on">EUR</span>
                 </div>
                 <label>Limitierte Anzahl</label>
-                <input class="span2" type="number" placeholder="unlimitiert" ng-model="article.available">
+                <select class="span2" placeholder="unlimitiert" ng-model="article.limit">
+                    <option value="" ng-selected="!article.limit">unlimitiert</option>
+                    <option ng-repeat="limit in limits" value="{{limit._id}}" ng-selected="article.limit == limit._id">{{limit.name}} ({{limit.available}})</option>
+                </select>
                 <label class="checkbox">
                     <input type="checkbox" ng-model="article.kitchen">Zubereitung durch K&uuml;che (<i class="icon-fire"></i>)
                 </label>
@@ -43,6 +58,18 @@
                 </label>
                 <label>Gruppe</label>
                 <input ng-model="article.group" maxlength="20" type="text" class="span4">
+            </fieldset>
+            <button type="submit" class="btn" ng-class="{'btn-danger': form.$invalid, 'btn-primary': !form.$invalid}" ng-disabled="form.$invalid || isUnchanged()" ng-click="save()">Speichern</button>
+            <button class="btn btn-inverse delete" ng-click="remove()">L&ouml;schen</button>
+        </form>
+    </div>
+    <div class="span9" ng-controller="LimitController" ng-show="limit">
+        <form name="form">
+            <fieldset>
+                <label>Name</label>
+                <input required maxlength="45" type="text" class="span8" ng-model="limit.name">
+                <label>Limitierte Anzahl</label>
+                <input class="span2" type="number" placeholder="unlimitiert" ng-model="limit.available">
             </fieldset>
             <button type="submit" class="btn" ng-class="{'btn-danger': form.$invalid, 'btn-primary': !form.$invalid}" ng-disabled="form.$invalid || isUnchanged()" ng-click="save()">Speichern</button>
             <button class="btn btn-inverse delete" ng-click="remove()">L&ouml;schen</button>
