@@ -116,6 +116,18 @@ var printerJobsFactory = function($rootScope, socketIo) {
     }
 };
 
+var sessionStorageFactory = function() {
+    var storage = {};
+    return {
+        put: function(key, value) {
+	    storage[key] = value;
+	},
+	get: function(key) {
+	    return storage[key];
+	}
+    };
+};
+
 var configFactory = function ($routeProvider) {
     $routeProvider.
         when('/cashbox', {templateUrl: 'cashbox.html', controller: CashboxController}).
@@ -132,6 +144,7 @@ angular.module('bistro', ['ui.bootstrap'])
     .service('messageService', ['$rootScope', messageServiceFactory])
     .service('socketIo', ['$rootScope', socketIoFactory])
     .service('printerjobsService', ['$rootScope', 'socketIo', printerJobsFactory])
+    .service('sessionStorage', [sessionStorageFactory])
     .directive('focus', ['$parse', '$timeout', focusDirectiveFactory])
     .directive('currency', ['$filter', currencyDiretiveFactory]);
 

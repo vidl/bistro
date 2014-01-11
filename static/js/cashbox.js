@@ -1,14 +1,16 @@
 /* Author: YOUR NAME HERE
 */
 
-function CashboxController($scope, $http, messageService) {
+function CashboxController($scope, $http, messageService, sessionStorage) {
     $scope.articles = [];
     $scope.articleGroups = [];
-    $scope.selectedGroups = [];
+    $scope.selectedGroups = sessionStorage.get('selectedGroups') || []; 
+    sessionStorage.put('selectedGroups', $scope.selectedGroups);
     $scope.limits = {};
 
     $scope.total = { chf: 0, eur: 0};
     $scope.voucherCurrency = 'chf';
+    
 
     var clearOrder = function() {
         angular.forEach($scope.articles, function(article){
@@ -23,7 +25,7 @@ function CashboxController($scope, $http, messageService) {
         $scope.articles = data;
         $scope.articlesGrouped = _.groupBy(data, 'group');
         $scope.articleGroups = _.uniq(_.pluck(data, 'group').sort(), true);
-        $scope.selectedGroups = $scope.articleGroups.slice(0);
+        //$scope.selectedGroups = $scope.articleGroups.slice(0);
         clearOrder();
     });
 
@@ -114,13 +116,14 @@ function CashboxController($scope, $http, messageService) {
     };
 
     $scope.toggleGroup = function(group) {
+
         var index = $scope.selectedGroups.indexOf(group);
         if (index >= 0) {
             $scope.selectedGroups.splice(index, 1);
         } else {
             $scope.selectedGroups.push(group);
-        }
+        }        
     };
 }
 
-CashboxController.$inject = ['$scope', '$http', 'messageService'];
+CashboxController.$inject = ['$scope', '$http', 'messageService', 'sessionStorage'];
