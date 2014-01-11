@@ -37,18 +37,22 @@
             <textarea placeholder="Hinweise für die Küche" class="input-block-level" rows="5" ng-model="kitchenNotes"></textarea>
         </div><!--/.well -->
         <div class="btn-group btn-group-vertical">
-            <a class="btn" ng-repeat="group in articleGroups" ng-click="toggleGroup(group)" ng-class="{'disabled': !isGroupSelected(group)}">{{group || 'ohne Gruppe'}}</a>
+            <a class="btn" ng-repeat="group in articleGroups" ng-click="toggleGroup(group)" ng-show="!isGroupSelected(group)">{{group || 'ohne Gruppe'}}</a>
         </div>
     </div><!--/span-->
 
-    <div class="span9" ng-repeat="(group,articleGroup) in articlesGrouped" ng-show="isGroupSelected(group)">
-
-        <a class="btn btn-large article" ng-class="{disabled: !isAvailable(article)}" ng-repeat="article in articleGroup | filter:{active: true}" ng-click="add(article)">
-            <div class="top left right" ng-show="hasLimit(article)">Verf: <span class="available badge">{{getLimit(article).available}}</span></div>
-            <div class="bottom muted" ng-repeat="(currency, amount) in article.price track by $id(currency)"  ng-class-odd="'left'" ng-class-even="'right'">
-                {{amount | currency:currency}}
-            </div>
-            {{article.name}}
-        </a>
+    <div class="span9">
+    	<div class="article-group" ng-repeat="(group,articleGroup) in articlesGrouped" ng-show="isGroupSelected(group)">
+	    	<a href="" ng-click="toggleGroup(group)" class="rotated-text" style="margin-bottom: 35px;">
+	    		<span class="label rotated-text__inner" style="position: absolute;">{{group}} &nbsp; &times;</span>
+		</a>
+		<a class="btn btn-large article" ng-class="{disabled: !isAvailable(article)}" ng-repeat="article in articleGroup | filter:{active: true}" ng-click="add(article)">
+		    <div class="top left right" ng-show="hasLimit(article)">Verf: <span class="available badge">{{getLimit(article).available}}</span></div>
+		    <div class="bottom muted" ng-repeat="(currency, amount) in article.price track by $id(currency)"  ng-class-odd="'left'" ng-class-even="'right'">
+			{{amount | currency:currency}}
+		    </div>
+		    {{article.name}}
+		</a>
+	</div>
     </div>
 </div>
