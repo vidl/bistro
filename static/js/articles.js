@@ -63,6 +63,11 @@ function ArticlesController($scope, $http) {
         });
         return selectedLimit;
     };
+    
+    $scope.getAvailability = function(article) {
+    	var limit = $scope.getLimit(article.limit);
+    	return Math.floor(limit.available / (parseInt(article.limitDec) || 1));
+    };
 
     $scope.$on('updateArticle', function(event, data){
         $scope.selectedId = data.saved._id;

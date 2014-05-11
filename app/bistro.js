@@ -160,7 +160,8 @@ module.exports = function(settings) {
             _.each(ctx.docs, function(limit){
                 var limitId = limit._id.toHexString();
                 var ordered = _.reduce(order.articles, function(ordered, article){
-                    return ordered + (article.limit == limitId ? article.ordered : 0);
+                    var dec = parseInt(article.limitDec) || 1;
+                    return ordered + (article.limit == limitId ? article.ordered * dec : 0);
                 }, 0);
                 if (ordered > 0) {
                     var deferred = Q.defer();

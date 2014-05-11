@@ -47,7 +47,7 @@
 	    		<span class="label rotated-text__inner" style="position: absolute;">{{group}} &nbsp; &times;</span>
 		</a>
 		<a class="btn btn-large article" ng-class="{disabled: !isAvailable(article)}" ng-repeat="article in articleGroup | filter:{active: true}" ng-click="add(article)">
-		    <div class="top left right" ng-show="hasLimit(article)">Verf: <span class="available badge">{{getLimit(article).available}}</span></div>
+		    <div class="top left right" ng-show="hasLimit(article)">Verf: <span class="available badge">{{getAvailability(article)}}</span></div>
 		    <div class="bottom muted" ng-repeat="(currency, amount) in article.price track by $id(currency)"  ng-class-odd="'left'" ng-class-even="'right'">
 			{{amount | currency:currency}}
 		    </div>

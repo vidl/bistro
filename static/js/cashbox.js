@@ -49,7 +49,8 @@ function CashboxController($scope, $http, messageService, sessionStorage) {
         if ($scope.isAvailable(article)) {
             resetGiven();
             article.ordered++;
-            updateLimit(article, -1);
+            var dec = parseInt(article.limitDec) || 1;
+            updateLimit(article,  -dec);
             $scope.total.chf += article.price.chf;
             $scope.total.eur += article.price.eur;
         }
@@ -58,7 +59,8 @@ function CashboxController($scope, $http, messageService, sessionStorage) {
     $scope.remove = function(article) {
         resetGiven();
         article.ordered--;
-        updateLimit(article, +1);
+        var inc = parseInt(article.limitDec) || 1;
+        updateLimit(article, +inc);
         $scope.total.chf -= article.price.chf;
         $scope.total.eur -= article.price.eur;
     };
@@ -102,13 +104,18 @@ function CashboxController($scope, $http, messageService, sessionStorage) {
     $scope.getLimit = function(article) {
         return $scope.limits[article.limit];
     };
-
+    
+    $scope.getAvailability = function(article) {
+        var limit = $scope.getLimit(article);
+    	return limit ? Math.floor(limit.available / (parseInt(article.limitDec) || 1)) : undefined;
+    };
+    
     $scope.hasLimit = function(article) {
         return article.limit && article.limit.length && $scope.limits[article.limit];
     };
 
     $scope.isAvailable = function(article) {
-        return !$scope.hasLimit(article) || $scope.getLimit(article).available > 0;
+        return !$scope.hasLimit(article) || $scope.getAvailability(article) > 0;
     };
 
     $scope.isGroupSelected = function(group) {

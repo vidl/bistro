@@ -6,7 +6,7 @@
                     <li ng-repeat="article in articleGroup.articles" ng-class="{active: selectedId == article._id}">
                         <a href="" ng-click="selectArticle(article)" class="clearfix">
                             <div class="pull-left" ng-class="{inactive: article.active == undefined || !article.active}">{{article.name}} <i ng-show="article.kitchen" class="icon-fire"></i></div>
-                            <div class="pull-right"><span class="badge" ng-show="{{article.limit.length}}" title="{{getLimit(article.limit).name}}">{{getLimit(article.limit).available}}</span></div>
+                            <div class="pull-right"><span class="badge" ng-show="{{article.limit.length}}" title="{{getLimit(article.limit).name}}">{{getAvailability(article)}}</span></div>
 
                         </a>
                     </li>
@@ -50,6 +50,8 @@
                     <option value="" ng-selected="!article.limit">unlimitiert</option>
                     <option ng-repeat="limit in limits" value="{{limit._id}}" ng-selected="article.limit == limit._id">{{limit.name}} ({{limit.available}})</option>
                 </select>
+                <span>Pro Bestellung:</span>
+                <input ng-model="article.limitDec" type="text" class="input-mini" placeholder="1" />
                 <label class="checkbox">
                     <input type="checkbox" ng-model="article.kitchen">Zubereitung durch K&uuml;che (<i class="icon-fire"></i>)
                 </label>
